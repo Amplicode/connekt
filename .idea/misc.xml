@@ -1,0 +1,27 @@
+<project version="4">
+  <component name="ConnektScriptState">
+    <option name="scriptFileState">
+      <list>
+        <ConnektScriptState>
+          <option name="fileUrl" value="file://$PROJECT_DIR$/src/conference.connekt.kts" />
+        </ConnektScriptState>
+        <ConnektScriptState>
+          <option name="fileUrl" value="file://$PROJECT_DIR$/src/http.connekt.kts" />
+        </ConnektScriptState>
+        <ConnektScriptState>
+          <option name="fileUrl" value="file://$PROJECT_DIR$/src/scenario.connekt.kts" />
+        </ConnektScriptState>
+      </list>
+    </option>
+  </component>
+  <component name="ExternalStorageConfigurationManager" enabled="true" />
+  <component name="FrameworkDetectionExcludesConfiguration">
+    <file type="web" url="file://$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_17" default="true" project-jdk-name="17" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/out" />
+  </component>
+  <component name="ProjectType">
+    <option name="id" value="jpab" />
+  </component>
+</project>
