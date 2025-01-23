@@ -1,5 +1,5 @@
 import com.jayway.jsonpath.TypeRef
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.*
 import java.io.File
 
 val baseUrl: String by env
@@ -69,7 +69,7 @@ PUT("$baseUrl/rest/conference/57") {
 val `get unauthorized` by GET("$baseUrl/rest/conference/{id}") {
     pathParams("id", createdConferenceId)
 } then {
-    Assertions.assertThat(code).isEqualTo(200)
+    assertThat(code).isEqualTo(200)
 }
 
 val `list all conferences` by GET("$baseUrl/conference") {
@@ -78,7 +78,7 @@ val `list all conferences` by GET("$baseUrl/conference") {
     noRedirect()
     noCookies()
 } then {
-    Assertions.assertThat(code).isEqualTo(200)
+    assertThat(code).isEqualTo(200)
 }
 
 val `update conference` by PUT("$baseUrl/conference/2") {
@@ -111,6 +111,8 @@ val conferencePersons by GET(
     "$baseUrl/conference/2"
 ) then {
     jsonPath().read("personIds", object : TypeRef<List<Long>>() {})
+    // or
+    jsonPath().readList("personIds", Long::class.java)
 }
 
 PUT("$baseUrl/conference/2") {
@@ -140,7 +142,7 @@ POST("$baseUrl/rest/conference") {
         """.trimIndent()
     )
 } then {
-    jsonPath().read<Int>("id")
+    jsonPath().readInt("id")
 }
 
 scenario(name = "dummy test") {
@@ -166,6 +168,8 @@ scenario(name = "dummy test") {
         jsonPath().read("id")
     }
 
+    println("Conference created. ID: $createdConferenceId")
+
     for (id in 1..10) {
         val conference by GET("$baseUrl/rest/conference/{id}") {
             pathParams("id", id)
@@ -176,6 +180,6 @@ scenario(name = "dummy test") {
             jsonPath().read("$", Conference::class.java)
         }
 
-        Assertions.assertThat(conference.id).isEqualTo(id)
+        assertThat(conference.id).isEqualTo(id)
     }
 }
