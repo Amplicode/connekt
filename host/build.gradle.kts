@@ -68,9 +68,9 @@ publishing {
             artifactId = "connekt-host"
             artifact(tasks.distZip)
         }
-        val uploadUrl = project.property("uploadUrl") as String?
-        val uploadUser = project.property("uploadUser") as String?
-        val uploadPassword = project.property("uploadPassword") as String?
+        val uploadUrl = project.findProject("uploadUrl") as String?
+        val uploadUser = project.findProject("uploadUser") as String?
+        val uploadPassword = project.findProject("uploadPassword") as String?
         uploadUrl?.let {
             repositories {
                 maven {
