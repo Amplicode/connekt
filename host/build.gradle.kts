@@ -1,8 +1,10 @@
 plugins {
     kotlin("jvm")
+    distribution
+    `maven-publish`
 }
 
-group = "io.amplicode"
+group = "com.amplicode"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -17,24 +19,69 @@ dependencies {
     testImplementation(kotlin("test"))
 }
 
-tasks.register<Copy>("buildDistributionDir") {
-    into("${layout.buildDirectory.get()}/distribution")
 
-    from(tasks.jar.get().archiveFile)
-
-    from(configurations.runtimeClasspath) {
-        include("*.jar")
+distributions {
+    main {
+        distributionBaseName = "host"
+        contents {
+            into("/") {
+                from(tasks.jar.get().archiveFile)
+                from(configurations.runtimeClasspath) {
+                    include("*.jar")
+                }
+            }
+        }
     }
 }
 
-tasks.create<Zip>("zipDist") {
-    from("${layout.buildDirectory.get()}/distribution")
-    into("${layout.buildDirectory.get()}/dist.zip")
-}
+//tasks.register<Copy>("buildDistributionDir") {
+//    into("${layout.buildDirectory.get()}/distribution")
+//
+//    from(tasks.jar.get().archiveFile)
+//
+//    from(configurations.runtimeClasspath) {
+//        include("*.jar")
+//    }
+//}
+//
+//tasks.create<Zip>("zipDist") {
+//    from("${layout.buildDirectory.get()}/distribution")
+//    into("${layout.buildDirectory.get()}/dist.zip")
+//}
 
 tasks.test {
     useJUnitPlatform()
 }
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(8)
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("distribution") {
+            artifactId = "connekt-host"
+            artifact(tasks.distZip)
+        }
+        val uploadUrl = project.property("uploadUrl") as String?
+        val uploadUser = project.property("uploadUser") as String?
+        val uploadPassword = project.property("uploadPassword") as String?
+        uploadUrl?.let {
+            repositories {
+                maven {
+                    setUrl(uploadUrl)
+                    credentials {
+                        username = uploadUser
+                        password = uploadPassword
+                    }
+                    isAllowInsecureProtocol = true
+                }
+            }
+        }
+    }
 }
