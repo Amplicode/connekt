@@ -3,9 +3,14 @@ package io.amplicode.connekt
 import okhttp3.*
 import okio.Buffer
 import okio.GzipSource
+import java.io.File
+import java.io.FileOutputStream
 import java.io.PrintStream
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Date
 
 class CallLogger(private val stream: PrintStream) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -68,16 +73,49 @@ class CallLogger(private val stream: PrintStream) : Interceptor {
             }
         }
 
-        val contentType = responseBody.contentType()
         val contentLength = responseBody.contentLength()
-        val charset: Charset = contentType?.charset(StandardCharsets.UTF_8) ?: StandardCharsets.UTF_8
 
         if (contentLength != 0L) {
-            stream.println("")
-            stream.print(Color.GREEN.ansi())
-            stream.println(buffer.clone().readString(charset))
-            stream.print(RESET_COLOR)
+            logResponseBody(responseBody, buffer)
         }
+    }
+
+    private fun logResponseBody(responseBody: ResponseBody, buffer: Buffer) {
+        val contentType = responseBody.contentType()
+        val charset: Charset = contentType?.charset(StandardCharsets.UTF_8) ?: StandardCharsets.UTF_8
+
+
+        val fileExtension = contentType?.toString()?.let { getExtensionForFileTypes(it) }
+
+
+        stream.println("")
+        stream.print(Color.GREEN.ansi())
+
+        if (fileExtension != null) {
+            val downloadDir = File(System.getProperty("user.home"), ".connekt")
+            if (!downloadDir.exists()) {
+                downloadDir.mkdirs()
+            }
+
+            val fileName = File(downloadDir, getCurrentTimestamp() + "." + fileExtension)
+
+            FileOutputStream(fileName).use {
+                buffer.clone().copyTo(it)
+            }
+
+            stream.println("Response file saved.\n> $fileName")
+        } else {
+            stream.println(buffer.clone().readString(charset))
+        }
+
+
+        stream.print(RESET_COLOR)
+    }
+
+    fun getCurrentTimestamp(): String {
+        val current = LocalDateTime.now()
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss")
+        return current.format(formatter)
     }
 
     private fun logHeaders(headers: Headers) {
@@ -107,6 +145,24 @@ class CallLogger(private val stream: PrintStream) : Interceptor {
             fun ansi(): String {
                 return "\u001B[${code}m";
             }
+        }
+
+        private val fileMediaTypes = listOf(
+            "image",
+            "video",
+            "audio",
+            "model",
+        )
+
+        private fun getExtensionForFileTypes(contentType: String): String? {
+            if (fileMediaTypes.any { contentType.startsWith("$it/") }) {
+                return contentType.substringAfter("/").substringBefore(" ")
+            }
+
+            if (contentType == "application/pdf")
+                return "pdf";
+
+            return null;
         }
     }
 }

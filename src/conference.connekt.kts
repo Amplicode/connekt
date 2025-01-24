@@ -2,9 +2,17 @@ import com.jayway.jsonpath.TypeRef
 import org.assertj.core.api.Assertions.*
 import java.io.File
 
+
+GET("http://localhost:8080/test/{foo}") {
+    header("Content-Type", "application/json")
+    pathParams("foo", "bar")
+}
+
+// может меняться в зависимости от профиля
 val baseUrl: String by env
 val clientSecret: String by env
 
+// можем вызвать явно, тогда значение сохранится в переменную accessToken
 val accessToken: String by POST("http://localhost:9081/realms/conferences/protocol/openid-connect/token") {
     contentType("application/x-www-form-urlencoded")
 
@@ -20,13 +28,12 @@ val accessToken: String by POST("http://localhost:9081/realms/conferences/protoc
     noRedirect()
     http2()
 } then {
-    jsonPath().readString("access_token")
+    jsonPath().readString("access_token") // извлекаем значение из json
 }
 
-// тип - результат запроса (then)
 val createdConferenceId by POST("$baseUrl/rest/conference") {
     contentType("application/json")
-    bearerAuth(accessToken)
+    bearerAuth(accessToken) // а если явно не вызывали, то вызовется перед выполнением текущего запроса
 
     body(
         """
@@ -41,6 +48,7 @@ val createdConferenceId by POST("$baseUrl/rest/conference") {
 
     noCookies()
 } then {
+    assertThat(jsonPath().readString("name")).isEqualTo("Spring Now")
     jsonPath().readInt("id")
 }
 
@@ -72,7 +80,7 @@ val `get unauthorized` by GET("$baseUrl/rest/conference/{id}") {
     assertThat(code).isEqualTo(200)
 }
 
-val `list all conferences` by GET("$baseUrl/conference") {
+val `list all conferences` by GET("$baseUrl/rest/conference") {
     bearerAuth(accessToken)
 
     noRedirect()
@@ -92,7 +100,7 @@ val `update conference` by PUT("$baseUrl/conference/2") {
     )
 }
 
-val createdPersonId by POST("$baseUrl/person") {
+val createdPersonId by POST("$baseUrl/rest/person") {
     contentType("application/json")
     body(
         """
@@ -104,15 +112,15 @@ val createdPersonId by POST("$baseUrl/person") {
     """.trimIndent()
     )
 } then {
-    jsonPath().read<Int>("id")
+    jsonPath().readInt("id")
 }
 
 val conferencePersons by GET(
-    "$baseUrl/conference/2"
+    "$baseUrl/rest/conference/2"
 ) then {
-    jsonPath().read("personIds", object : TypeRef<List<Long>>() {})
+    jsonPath().read("committeeMembers", object : TypeRef<List<Long>>() {})
     // or
-    jsonPath().readList("personIds", Long::class.java)
+    jsonPath().readList("committeeMembers", Long::class.java)
 }
 
 PUT("$baseUrl/conference/2") {

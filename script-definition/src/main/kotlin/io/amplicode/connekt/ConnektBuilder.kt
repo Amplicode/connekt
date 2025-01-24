@@ -118,6 +118,23 @@ class ConnektBuilder(
         BaseRequestConfigurable(method, path).apply(configure)
     }
 
+    @Invokable
+    fun scenario(
+        name: String,
+        scenario: ScenarioBuilder.() -> Unit = {}
+    ) {
+        val scenarioBuilder = ScenarioBuilder(connektContext)
+
+        requests.add(
+            object : Executable<Unit>() {
+                override fun execute() {
+                    println("Scenario [${name}]")
+                    scenarioBuilder.scenario()
+                }
+            }
+        )
+    }
+
     private val jsonPaths: WeakHashMap<Response, ReadContext> = WeakHashMap()
 
     fun Response.jsonPath(): ReadContext {
@@ -151,28 +168,15 @@ class ConnektBuilder(
         return read(path)
     }
 
+    fun ReadContext.readLong(path: String): Int {
+        return read(path)
+    }
+
     fun <T> ReadContext.readList(path: String, clazz: Class<T>): List<T> {
         val nodes: List<JsonNode> = read(path, object : TypeRef<List<JsonNode>>() {})
         return nodes.map {
             connektContext.objectMapper.treeToValue(it, clazz)
         }
-    }
-
-    @Invokable
-    fun scenario(
-        name: String,
-        scenario: ScenarioBuilder.() -> Unit = {}
-    ) {
-        val scenarioBuilder = ScenarioBuilder(connektContext)
-
-        requests.add(
-            object : Executable<Unit>() {
-                override fun execute() {
-                    println("Scenario [${name}]")
-                    scenarioBuilder.scenario()
-                }
-            }
-        )
     }
 
     private fun <T : BaseRequestConfigurable> addRequest(requestBuilderSupplier: () -> T): Thenable<T> {
@@ -194,7 +198,6 @@ class ConnektBuilder(
             is Terminal<*, *> -> get(property.name) as R
         }
     }
-
 }
 
 
