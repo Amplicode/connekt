@@ -66,6 +66,7 @@ publishing {
     publications {
         create<MavenPublication>("distribution") {
             artifactId = "connekt-host"
+            version = "1.0-SNAPSHOT"
             artifact(tasks.distZip)
         }
         val uploadUrl = project.findProperty("uploadUrl") as String?
