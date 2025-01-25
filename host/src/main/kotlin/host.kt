@@ -1,6 +1,7 @@
 package io.amplicode.host
 
 import io.amplicode.connekt.*
+import io.amplicode.connekt.dsl.ConnektBuilder
 import org.mapdb.DBMaker
 import java.io.File
 import kotlin.script.experimental.api.*
@@ -32,6 +33,7 @@ fun main(vararg args: String) {
 }
 
 private val compiledScriptJarsCache = CompiledScriptJarsCache({ sourceCode, _ ->
+    // todo use connekt version in cached script name
     File(
         System.getProperty("java.io.tmpdir"),
         "${sourceCode.text.hashCode()}_${sourceCode.locationId.hashCode()}.connekt.cache"
@@ -44,8 +46,13 @@ fun evalFile(scriptFile: File, requestNumber: Int?): ResultWithDiagnostics<Evalu
     }
 
     val requests = mutableListOf<Executable<*>>()
-    val db = DBMaker.fileDB("env").make()
 
+    val dir = File(System.getProperty("user.home"), ".connekt")
+    if (!dir.exists()) {
+        dir.mkdirs()
+    }
+
+    val db = DBMaker.fileDB(File(dir, "connekt.db")).make()
 
     db.use {
         val connektContext = ConnektContext(db)

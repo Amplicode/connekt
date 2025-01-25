@@ -1,7 +1,7 @@
 val baseUrl: String by env
 val clientSecret: String by env
 
-scenario(name = "") {
+flow {
     val accessToken by POST("http://localhost:9081/realms/conferences/protocol/openid-connect/token") {
         formData {
             field("grant_type", "password")

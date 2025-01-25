@@ -2,17 +2,9 @@ import com.jayway.jsonpath.TypeRef
 import org.assertj.core.api.Assertions.*
 import java.io.File
 
-
-GET("http://localhost:8080/test/{foo}") {
-    header("Content-Type", "application/json")
-    pathParams("foo", "bar")
-}
-
-// может меняться в зависимости от профиля
 val baseUrl: String by env
 val clientSecret: String by env
 
-// можем вызвать явно, тогда значение сохранится в переменную accessToken
 val accessToken: String by POST("http://localhost:9081/realms/conferences/protocol/openid-connect/token") {
     contentType("application/x-www-form-urlencoded")
 
@@ -28,12 +20,12 @@ val accessToken: String by POST("http://localhost:9081/realms/conferences/protoc
     noRedirect()
     http2()
 } then {
-    jsonPath().readString("access_token") // извлекаем значение из json
+    jsonPath().readString("access_token")
 }
 
 val createdConferenceId by POST("$baseUrl/rest/conference") {
     contentType("application/json")
-    bearerAuth(accessToken) // а если явно не вызывали, то вызовется перед выполнением текущего запроса
+    bearerAuth(accessToken)
 
     body(
         """
@@ -48,7 +40,7 @@ val createdConferenceId by POST("$baseUrl/rest/conference") {
 
     noCookies()
 } then {
-    assertThat(jsonPath().readString("name")).isEqualTo("Spring Now")
+    assertThat(jsonPath().readString("name")).isEqualTo("Joker")
     jsonPath().readInt("id")
 }
 
@@ -124,7 +116,7 @@ val conferencePersons by GET(
 }
 
 PUT("$baseUrl/conference/2") {
-    headers(HttpHeaders.CONTENT_TYPE to "application/json")
+    contentType("application/json")
     body(
         """
             {
@@ -140,20 +132,18 @@ POST("$baseUrl/rest/conference") {
     bearerAuth(accessToken)
 
     body(
-        """
-        {
-            "name": "Joker",
-            "description": "The best Java Conference",
-            "beginDateTime": "2024-10-09T15:00:00",
-            "endDateTime": "2024-10-09T15:45:00"
-        }
-        """.trimIndent()
+        """{
+    "name": "Joker",
+    "description": "The best Java Conference",
+    "beginDateTime": "2024-10-09T15:00:00",
+    "endDateTime": "2024-10-09T15:45:00"
+}"""
     )
 } then {
     jsonPath().readInt("id")
 }
 
-scenario(name = "dummy test") {
+flow(name = "dummy test") {
     data class Conference(val id: Int)
 
     val createdConferenceId: Int by POST("$baseUrl/rest/conference") {

@@ -1,4 +1,4 @@
-package io.amplicode.connekt.request
+package io.amplicode.connekt.dsl
 
 import okhttp3.MediaType
 

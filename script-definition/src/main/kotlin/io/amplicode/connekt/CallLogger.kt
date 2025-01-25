@@ -1,8 +1,11 @@
 package io.amplicode.connekt
 
+import io.amplicode.connekt.console.Printer
+import io.amplicode.connekt.console.Printer.Color.*
 import okhttp3.*
 import okio.Buffer
 import okio.GzipSource
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.PrintStream
@@ -12,7 +15,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Date
 
-class CallLogger(private val stream: PrintStream) : Interceptor {
+class CallLogger(private val printer: Printer) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
 
@@ -22,7 +25,7 @@ class CallLogger(private val stream: PrintStream) : Interceptor {
         try {
             response = chain.proceed(request)
         } catch (e: Exception) {
-            stream.println(color("Connection refused", Color.RED))
+            printer.println("Connection refused", RED)
             throw e
         }
 
@@ -34,29 +37,31 @@ class CallLogger(private val stream: PrintStream) : Interceptor {
     private fun logRequest(request: Request) {
         listOfNotNull(request.method, request.url)
             .joinToString(separator = " ")
-            .let { stream.println(color(it, Color.BLUE)) }
+            .let { printer.println(it, BLUE) }
 
         logHeaders(request.headers)
 
-        stream.println("")
+        printer.println("")
 
         request.body?.let {
             val sink = Buffer()
             it.writeTo(sink)
 
-            stream.print(Color.GREEN.ansi())
-            sink.copyTo(stream)
-            stream.print(RESET_COLOR)
-            stream.println("")
-            stream.println("")
+            ByteArrayOutputStream().use { stream ->
+                sink.copyTo(stream)
+
+                printer.print(String(stream.toByteArray()), GREEN)
+            }
+            printer.println("")
+            printer.println("")
         }
     }
 
     private fun logResponse(response: Response) {
-        stream.println(
+        printer.println(
             listOfNotNull(printProtocol(response.protocol), response.code, response.message)
-                .joinToString(separator = " ")
-                .let { color(it, Color.BLUE) }
+                .joinToString(separator = " "),
+            BLUE
         )
 
         logHeaders(response.headers)
@@ -88,8 +93,7 @@ class CallLogger(private val stream: PrintStream) : Interceptor {
         val fileExtension = contentType?.toString()?.let { getExtensionForFileTypes(it) }
 
 
-        stream.println("")
-        stream.print(Color.GREEN.ansi())
+        printer.println("")
 
         if (fileExtension != null) {
             val downloadDir = File(System.getProperty("user.home"), ".connekt")
@@ -103,16 +107,14 @@ class CallLogger(private val stream: PrintStream) : Interceptor {
                 buffer.clone().copyTo(it)
             }
 
-            stream.println("Response file saved.\n> $fileName")
+            printer.println("Response file saved.\n> $fileName", GREEN)
         } else {
-            stream.println(buffer.clone().readString(charset))
+            printer.println(buffer.clone().readString(charset), GREEN)
         }
 
-
-        stream.print(RESET_COLOR)
     }
 
-    fun getCurrentTimestamp(): String {
+    private fun getCurrentTimestamp(): String {
         val current = LocalDateTime.now()
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss")
         return current.format(formatter)
@@ -120,7 +122,7 @@ class CallLogger(private val stream: PrintStream) : Interceptor {
 
     private fun logHeaders(headers: Headers) {
         headers.joinToString(separator = " \n") { it.first + ": " + it.second }
-            .let { stream.println(color(it, Color.BLUE)) }
+            .let { printer.println(it, BLUE) }
     }
 
     private fun printProtocol(protocol: Protocol) = when (protocol) {
@@ -131,22 +133,6 @@ class CallLogger(private val stream: PrintStream) : Interceptor {
     }
 
     companion object {
-        private fun color(text: String, color: Color): String {
-            return "${color.ansi()}$text$RESET_COLOR"
-        }
-
-        private const val RESET_COLOR = "\u001B[0m"
-
-        private enum class Color(val code: String) {
-            BLUE("34"),
-            GREEN("32"),
-            RED("31");
-
-            fun ansi(): String {
-                return "\u001B[${code}m";
-            }
-        }
-
         private val fileMediaTypes = listOf(
             "image",
             "video",

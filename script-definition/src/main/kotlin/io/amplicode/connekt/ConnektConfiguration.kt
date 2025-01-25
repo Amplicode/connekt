@@ -5,6 +5,7 @@
 
 package io.amplicode.connekt
 
+import io.amplicode.connekt.dsl.ConnektBuilder
 import kotlinx.coroutines.runBlocking
 import kotlin.random.Random
 import kotlin.script.experimental.api.*
@@ -22,8 +23,7 @@ object ConnektConfiguration : ScriptCompilationConfiguration(
 
         defaultImports(
             "kotlin.script.experimental.dependencies.DependsOn",
-            "kotlin.random.Random",
-            "org.apache.http.HttpHeaders"
+            "kotlin.random.Random"
         )
 
         displayName(

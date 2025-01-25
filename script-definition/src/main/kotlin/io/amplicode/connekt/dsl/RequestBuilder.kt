@@ -3,7 +3,7 @@
  * Use is subject to license terms.
  */
 
-package io.amplicode.connekt.request
+package io.amplicode.connekt.dsl
 
 import okhttp3.FormBody
 import okhttp3.Headers
@@ -18,7 +18,7 @@ import java.util.Base64
 @DslMarker
 annotation class ConnektDsl
 
-abstract class RequestConfigurable {
+abstract class RequestBuilder {
     internal abstract fun build(): Request
 
     internal val requestHints: RequestHints = RequestHints(
@@ -111,30 +111,30 @@ class FormDataBodyBuilder {
     internal fun build(): FormDataBody = FormDataBody(fields)
 }
 
-interface RequestConfigurableExtensions {
-    fun BaseRequestConfigurable.basicAuth(username: String, password: String) {
+interface RequestBuilderExtensions {
+    fun BaseRequestBuilder.basicAuth(username: String, password: String) {
         val token = Base64.getEncoder().encodeToString("$username:$password".toByteArray())
         header("Authorization", "Basic $token")
     }
 
-    fun BaseRequestConfigurable.bearerAuth(token: String) {
+    fun BaseRequestBuilder.bearerAuth(token: String) {
         header("Authorization", "Bearer $token")
     }
 
-    fun BaseRequestConfigurable.contentType(contentType: String) {
+    fun BaseRequestBuilder.contentType(contentType: String) {
         header("Content-Type", contentType)
     }
 
-    fun BaseRequestConfigurable.accept(contentType: String) {
+    fun BaseRequestBuilder.accept(contentType: String) {
         header("Accept", contentType)
     }
 }
 
 @ConnektDsl
-open class BaseRequestConfigurable(
+open class BaseRequestBuilder(
     private val method: String,
     private val path: String,
-) : RequestConfigurable(), RequestConfigurableExtensions {
+) : RequestBuilder(), RequestBuilderExtensions {
     private var body: RequestBody? = null
         set(value) {
             require(field == null) {
@@ -248,14 +248,15 @@ open class BaseRequestConfigurable(
 
 }
 
-class GetConfigurable(path: String) : BaseRequestConfigurable("GET", path)
-class PostConfigurable(path: String) : BaseRequestConfigurable("POST", path)
-class PutConfigurable(path: String) : BaseRequestConfigurable("PUT", path)
-class OptionsConfigurable(path: String) : BaseRequestConfigurable("OPTIONS", path)
-class PatchConfigurable(path: String) : BaseRequestConfigurable("PATCH", path)
-class DeleteConfigurable(path: String) : BaseRequestConfigurable("DELETE", path)
-class HeadConfigurable(path: String) : BaseRequestConfigurable("HEAD", path)
-class TraceConfigurable(path: String) : BaseRequestConfigurable("TRACE", path)
+// do we need these classes?
+class GetBuilder(path: String) : BaseRequestBuilder("GET", path)
+class PostBuilder(path: String) : BaseRequestBuilder("POST", path)
+class PutBuilder(path: String) : BaseRequestBuilder("PUT", path)
+class OptionsBuilder(path: String) : BaseRequestBuilder("OPTIONS", path)
+class PatchBuilder(path: String) : BaseRequestBuilder("PATCH", path)
+class DeleteBuilder(path: String) : BaseRequestBuilder("DELETE", path)
+class HeadBuilder(path: String) : BaseRequestBuilder("HEAD", path)
+class TraceBuilder(path: String) : BaseRequestBuilder("TRACE", path)
 
 private fun buildHeaders(headers: List<Pair<String, Any>>) = Headers.Builder().apply {
     headers.forEach {
