@@ -9,8 +9,8 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/host" />
-            <option value="$PROJECT_DIR$/script-definition" />
+            <option value="$PROJECT_DIR$/connekt-script-definition" />
+            <option value="$PROJECT_DIR$/connekt-scripting-host" />
           </set>
         </option>
       </GradleProjectSettings>
