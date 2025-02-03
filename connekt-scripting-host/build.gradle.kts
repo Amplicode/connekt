@@ -58,7 +58,7 @@ version = "1.0-SNAPSHOT"
 publishing {
     publications {
         create<MavenPublication>("distribution") {
-            artifactId = "connekt-host"
+            artifactId = "connekt-scripting-host"
             version = project.version as String
             artifact(tasks.distZip)
         }
