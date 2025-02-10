@@ -5,6 +5,7 @@
 
 package io.amplicode.connekt.dsl
 
+import io.amplicode.connekt.Body
 import io.amplicode.connekt.Header
 import io.amplicode.connekt.HeaderName
 import io.amplicode.connekt.HeaderValue
@@ -175,7 +176,7 @@ open class BaseRequestBuilder(
         headers.add(key to value)
     }
 
-    fun body(body: String) {
+    fun body(@Body body: String) {
         this.body = StringBody(body)
     }
 
