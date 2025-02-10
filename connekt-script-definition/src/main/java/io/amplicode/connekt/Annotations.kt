@@ -33,3 +33,9 @@ annotation class HeaderValue
 
 @Target(AnnotationTarget.VALUE_PARAMETER)
 annotation class Header
+
+/**
+ * Marks elements with HTTP body
+ */
+@Target(AnnotationTarget.VALUE_PARAMETER)
+annotation class Body
