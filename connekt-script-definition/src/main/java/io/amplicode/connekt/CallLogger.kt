@@ -2,6 +2,7 @@ package io.amplicode.connekt
 
 import io.amplicode.connekt.console.Printer
 import io.amplicode.connekt.console.Printer.Color.*
+import io.amplicode.connekt.console.println
 import okhttp3.*
 import okhttp3.Request
 import okio.Buffer

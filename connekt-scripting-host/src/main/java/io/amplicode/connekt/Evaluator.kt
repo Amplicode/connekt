@@ -20,9 +20,7 @@ import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromT
 class Evaluator(
     private val useCompilationCache: Boolean = true
 ) {
-    var onEvaluationListener: EvaluationListener = EvaluationListener.NOOP
-
-    // A jvm target version used for script compilation. 
+    // A jvm target version used for script compilation.
     // This version also determines minimal JDK version
     // that should be used to run the Evaluator.
     private val jvmTarget = "1.8"
@@ -47,32 +45,21 @@ class Evaluator(
         scriptSourceCode: SourceCode,
         requestNumber: Int?
     ): ResultWithDiagnostics<EvaluationResult> {
-        try {
-            val scriptingHost = createScriptingHost()
-            val eval = scriptingHost.eval(
-                scriptSourceCode,
-                compilationConfiguration,
-                ScriptEvaluationConfiguration {
-                    implicitReceivers(connektBuilder)
-                }
-            )
-
-            if (eval.returnValueAsError != null || eval.isError()) {
-                return eval
+        val scriptingHost = createScriptingHost()
+        val eval = scriptingHost.eval(
+            scriptSourceCode,
+            compilationConfiguration,
+            ScriptEvaluationConfiguration {
+                implicitReceivers(connektBuilder)
             }
+        )
 
-            if (requestNumber != null) {
-                val request = connektBuilder.requests[requestNumber]
-                RequestExecutor.execute(request)
-            } else {
-                connektBuilder.requests
-                    .forEach { RequestExecutor.execute(it) }
-            }
-
+        if (eval.returnValueAsError != null || eval.isError()) {
             return eval
-        } finally {
-            fireEvaluated()
         }
+
+        RequestExecutor.execute(connektBuilder, requestNumber)
+        return eval
     }
 
     private fun createScriptingHost(): BasicJvmScriptingHost {
@@ -84,14 +71,6 @@ class Evaluator(
             null
         }
         return BasicJvmScriptingHost(baseHostConfiguration = hostConfiguration)
-    }
-
-    private fun fireEvaluated() {
-        onEvaluationListener.onEvaluation()
-    }
-
-    fun onEvaluate(listener: EvaluationListener) {
-        onEvaluationListener = listener
     }
 
     private fun createCompiledScriptJarsCache() =

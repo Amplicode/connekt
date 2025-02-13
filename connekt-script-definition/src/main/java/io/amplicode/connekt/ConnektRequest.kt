@@ -19,11 +19,6 @@ class ConnektRequest<T : BaseRequestBuilder>(
             assert(field == null) { "thenCallback already registered" }
             field = value
         }
-    internal var resultName: String? = null
-        set(value) {
-            assert(field == null) { "Request already registered" }
-            field = value
-        }
 
     @Suppress("unused")
     infix fun then(thenCallback: Response.() -> Any?): ConnektRequest<T> {
@@ -59,59 +54,6 @@ class ConnektRequest<T : BaseRequestBuilder>(
 
 
         val result = thenCallback?.invoke(response)
-
-        resultName?.let { context.values[it] = result }
-
         return result
-    }
-}
-
-sealed interface ConnektRequestHolder<T>
-
-class Thenable<T : BaseRequestBuilder>(
-    private val connektRequest: ConnektRequest<T>
-) : ConnektRequestHolder<Unit> {
-    @Suppress("unused")
-    infix fun <R> then(assertCallback: Response.() -> R): Terminal<T, R> {
-        connektRequest.thenCallback = assertCallback
-        return Terminal(connektRequest)
-    }
-
-    internal fun getOrExecuteWithName(name: String) {
-        val value = connektRequest.context.values[name]
-        if (value == null) {
-            connektRequest.resultName = name
-            return connektRequest.execute() as Unit
-        }
-
-        return value as Unit
-    }
-
-    internal fun execute() {
-        connektRequest.execute()
-    }
-}
-
-class Terminal<T : BaseRequestBuilder, R>(
-    private val connektRequest: ConnektRequest<T>
-) : ConnektRequestHolder<R> {
-    internal fun getOrExecuteWithName(name: String): R {
-        val value = connektRequest.context.values[name]
-        if (value == null) {
-            connektRequest.resultName = name
-            return connektRequest.execute() as R
-        }
-
-        return value as R
-    }
-
-    internal fun execute(): R {
-        return connektRequest.execute() as R
-    }
-}
-
-object RequestExecutor {
-    fun execute(executable: Executable<*>) {
-        executable.execute()
     }
 }

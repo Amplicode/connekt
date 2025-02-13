@@ -28,17 +28,14 @@ internal class ConnektCommand : AbstractConnektCommand() {
         globalEnvFile.parentFile.mkdirs()
 
         val db = DBMaker.fileDB(globalEnvFile).make()
-        val connektContext = ConnektContext(db)
-
-        val connektBuilder = ConnektBuilder(
-            connektContext,
+        val connektContext = ConnektContext(
+            db,
             createEnvStore(),
             VariablesStore(db)
         )
+
+        val connektBuilder = ConnektBuilder(connektContext)
         val evaluator = Evaluator(useCompilationCache)
-        evaluator.onEvaluate {
-            db.close()
-        }
 
         val res = evaluator.evalScript(
             connektBuilder,

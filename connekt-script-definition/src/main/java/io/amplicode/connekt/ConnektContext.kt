@@ -11,14 +11,17 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.kotlinModule
 import io.amplicode.connekt.console.Printer
+import io.amplicode.connekt.console.SystemOutPrinter
 import okhttp3.*
 import org.mapdb.DB
 import org.mapdb.Serializer
 
 class ConnektContext(
-    db: DB
+    private val db: DB,
+    val env: EnvironmentStore,
+    val vars: VariablesStore,
+    val printer: Printer = SystemOutPrinter,
 ) : AutoCloseable {
-    val printer = Printer(System.out)
 
     val objectMapper: ObjectMapper by lazy {
         ObjectMapper()
@@ -81,6 +84,7 @@ class ConnektContext(
         for ((_, client) in clients) {
             client.connectionPool.evictAll()
         }
+        db.close()
     }
 
     companion object {

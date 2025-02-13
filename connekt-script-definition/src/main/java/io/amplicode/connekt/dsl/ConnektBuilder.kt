@@ -13,6 +13,7 @@ import com.jayway.jsonpath.TypeRef
 import com.jayway.jsonpath.spi.json.JacksonJsonProvider
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider
 import io.amplicode.connekt.*
+import io.amplicode.connekt.console.println
 import okhttp3.Response
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -20,11 +21,11 @@ import java.util.*
 import kotlin.reflect.KProperty
 
 class ConnektBuilder(
-    private val connektContext: ConnektContext,
-    val env: EnvironmentStore,
-    val vars: VariablesStore,
+    val connektContext: ConnektContext,
     val requests: MutableList<Executable<*>> = mutableListOf()
 ) {
+    val env = connektContext.env
+    val vars = connektContext.vars
 
     @Suppress("unused")
     fun <T> variable(): DelegateProvider<T> {
@@ -196,10 +197,13 @@ class ConnektBuilder(
         any: Any?,
         property: KProperty<*>
     ): R {
-        return when (this) {
-            is Thenable<*> -> getOrExecuteWithName(property.name) as R
-            is Terminal<*, *> -> getOrExecuteWithName(property.name) as R
-        }
+        return connektContext.values.getOrPut(property.name) {
+            connektContext.printer.println("Initializing value for property `${property.name}`")
+            when (this) {
+                is Thenable<*> -> execute()
+                is Terminal<*, *> -> execute()
+            }
+        } as R
     }
 }
 

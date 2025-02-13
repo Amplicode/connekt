@@ -45,42 +45,58 @@ class EvaluatorTest {
 
     @Test
     fun `test persistent variables type overwrite`() {
-        val firstResult = evaluate(
+        evaluateThrowing(
             """
                 val z by vars.string()
                 z.set("uno")
                 z.get()
             """.trimIndent()
         )
-        firstResult.assertNoCompileAndRuntimeErrors()
 
-        val secondResult = evaluate(
+        evaluateThrowing(
             """
                 val z by vars.int()
                 z.set(1)
                 val y = z.get()
             """.trimIndent()
         )
-        secondResult.assertNoCompileAndRuntimeErrors()
     }
 
     @Test
     fun `test N request evaluation`() {
         runWithServer { port ->
-            val result = evaluate(
+            evaluateThrowing(
                 """
                 GET("http://localhost:$port/foo") {
                     
                 }
                 
                 GET("http://localhost:$port/bar") {
-    
+                
                 }
                 """.trimIndent(),
                 1
             )
+        }
+    }
 
-            result.assertNoCompileAndRuntimeErrors()
+    @Test
+    fun `test delegates`() {
+        runWithServer { port ->
+            evaluateThrowing(
+                """
+                val fooRequest by GET("http://localhost:$port/foo") {
+                    
+                } then {
+                    body!!.string()
+                }
+                
+                GET("http://localhost:$port/bar") {
+                    queryParam("my-param", fooRequest)
+                }
+                """.trimIndent(),
+                1
+            )
         }
     }
 
@@ -115,21 +131,26 @@ class EvaluatorTest {
         requestNumber: Int? = null
     ): ResultWithDiagnostics<EvaluationResult> {
         val db = DBMaker.memoryDB().make()
-        val connektBuilder = ConnektBuilder(
-            ConnektContext(db),
+        val connektContext = ConnektContext(
+            db,
             NoOpEnvironmentStore,
             VariablesStore(db)
         )
-        val evaluator = Evaluator(false).apply {
-            onEvaluate {
-                db.close()
-            }
-        }
+        val connektBuilder = ConnektBuilder(connektContext)
+        val evaluator = Evaluator(false)
         return evaluator.evalScript(
             connektBuilder,
             StringScriptSource(scriptText),
             requestNumber
         )
+    }
+
+    private fun evaluateThrowing(
+        @Language("kotlin") scriptText: String,
+        requestNumber: Int? = null
+    ) {
+        val result = evaluate(scriptText, requestNumber)
+        result.assertNoCompileAndRuntimeErrors()
     }
 
     private fun ResultWithDiagnostics<EvaluationResult>.assertNoCompileAndRuntimeErrors() {
