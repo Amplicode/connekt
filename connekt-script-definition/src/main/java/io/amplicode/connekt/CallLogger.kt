@@ -1,5 +1,6 @@
 package io.amplicode.connekt
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.amplicode.connekt.console.Printer
 import io.amplicode.connekt.console.Printer.Color.*
 import io.amplicode.connekt.console.println
@@ -88,10 +89,8 @@ class CallLogger(private val printer: Printer) : Interceptor {
     private fun logResponseBody(responseBody: ResponseBody, buffer: Buffer) {
         val contentType = responseBody.contentType()
         val charset: Charset = contentType?.charset(StandardCharsets.UTF_8) ?: StandardCharsets.UTF_8
-
-
-        val fileExtension = contentType?.toString()?.let { getExtensionForFileTypes(it) }
-
+        val mediaType = contentType?.toString()
+        val fileExtension = mediaType?.let { getExtensionForFileTypes(it) }
 
         printer.println("")
 
@@ -109,9 +108,22 @@ class CallLogger(private val printer: Printer) : Interceptor {
 
             printer.println("Response file saved.\n> $fileName", GREEN)
         } else {
-            printer.println(buffer.clone().readString(charset), GREEN)
-        }
+            var responseText = buffer.clone().readString(charset)
 
+            // Apply pretty format if JSON
+            if (mediaType == "application/json") {
+                try {
+                    val objectMapper = jacksonObjectMapper()
+                    val node = objectMapper.readTree(responseText)
+                    responseText = objectMapper.writerWithDefaultPrettyPrinter()
+                        .writeValueAsString(node)
+                } catch (_: Exception) {
+                    // ignore
+                }
+            }
+
+            printer.println(responseText, GREEN)
+        }
     }
 
     private fun getCurrentTimestamp(): String {
@@ -146,9 +158,9 @@ class CallLogger(private val printer: Printer) : Interceptor {
             }
 
             if (contentType == "application/pdf")
-                return "pdf";
+                return "pdf"
 
-            return null;
+            return null
         }
     }
 }

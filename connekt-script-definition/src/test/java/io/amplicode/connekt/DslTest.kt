@@ -11,21 +11,23 @@ import io.amplicode.connekt.console.BaseNonColorPrinter
 import io.amplicode.connekt.console.Printer
 import io.amplicode.connekt.console.SystemOutPrinter
 import io.amplicode.connekt.dsl.ConnektBuilder
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
-import io.ktor.server.routing.routing
+import io.ktor.http.*
+import io.ktor.server.engine.*
+import io.ktor.server.netty.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.TestInstance
 import org.mapdb.DB
 import org.mapdb.DBMaker
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DslTest {
-
-    lateinit var connektOutput: StringContentHolder
 
     @Test
     fun simpleTest() {
@@ -46,45 +48,41 @@ class DslTest {
 
     @Test
     fun testVarSyntax() {
-        runWithServer {  host ->
-            createConnektBuilder().runScript {
-                val myVar by variable<String>()
-                val myInt by vars.int()
+        createConnektBuilder().runScript {
+            val myVar by variable<String>()
+            val myInt by vars.int()
 
-                GET("$host/foo") then {
-                    myVar.set(body!!.string())
-                    myInt.set(1)
-                }
-                GET("$host/bar") then {
-                    assertEquals("foo", myVar.get())
-                    assertEquals(1, myInt.get())
-                }
+            GET("$host/foo") then {
+                myVar.set(body!!.string())
+                myInt.set(1)
+            }
+            GET("$host/bar") then {
+                assertEquals("foo", myVar.get())
+                assertEquals(1, myInt.get())
             }
         }
     }
 
     @Test
     fun testEnvSyntax() {
-        runWithServer { host ->
-            val envStore = InMemoryEnvironmentStore()
-            val connektBuilder = createConnektBuilder(environmentStore = envStore)
-            envStore["one"] = 1
-            envStore["two"] = "2"
+        val envStore = InMemoryEnvironmentStore()
+        val connektBuilder = createConnektBuilder(environmentStore = envStore)
+        envStore["one"] = 1
+        envStore["two"] = "2"
 
-            connektBuilder.runScript {
-                val one: Int by env
-                val two: String by env
-                GET("$host/foo?p=$one") {
-                    assertEquals(1, one)
-                    assertEquals("2", two)
-                }
+        connektBuilder.runScript {
+            val one: Int by env
+            val two: String by env
+            GET("$host/foo?p=$one") {
+                assertEquals(1, one)
+                assertEquals("2", two)
             }
         }
     }
 
     @Test
     fun testRunEntireScript() {
-        runScriptWithServer { host ->
+        createConnektBuilder().runScript {
             GET("$host/foo")
             GET("$host/bar")
         }
@@ -92,7 +90,8 @@ class DslTest {
 
     @Test
     fun testDelegatedPropertiesRequest() {
-        val (host) = runScriptWithServer(1) { host ->
+        val connektBuilder = createConnektBuilder()
+        val output = connektBuilder.runScript(1) {
             val fooRequest by GET("$host/foo") then {
                 body!!.string()
             }
@@ -105,127 +104,181 @@ class DslTest {
         val hostWithoutProtocol = host.removePrefix("http://")
         assertEquals(
             """
-                Initializing value for property `fooRequest`
-                GET $host/foo
-                User-Agent: connekt/0.0.1 
-                Host: $hostWithoutProtocol 
-                Connection: Keep-Alive 
-                Accept-Encoding: gzip
+            Initializing value for property `fooRequest`
+            GET $host/foo
+            User-Agent: connekt/0.0.1 
+            Host: $hostWithoutProtocol 
+            Connection: Keep-Alive 
+            Accept-Encoding: gzip
 
-                HTTP/1.1 200 OK
-                Content-Length: 3 
-                Content-Type: text/plain; charset=UTF-8 
-                Connection: keep-alive
+            HTTP/1.1 200 OK
+            Content-Length: 3 
+            Content-Type: text/plain; charset=UTF-8 
+            Connection: keep-alive
 
-                foo
-                GET $host/bar
-                param-from-foo-request: foo 
-                User-Agent: connekt/0.0.1 
-                Host: $hostWithoutProtocol 
-                Connection: Keep-Alive 
-                Accept-Encoding: gzip
+            foo
+            GET $host/bar
+            param-from-foo-request: foo 
+            User-Agent: connekt/0.0.1 
+            Host: $hostWithoutProtocol 
+            Connection: Keep-Alive 
+            Accept-Encoding: gzip
 
-                HTTP/1.1 200 OK
-                Content-Length: 3 
-                Content-Type: text/plain; charset=UTF-8 
-                Connection: keep-alive
+            HTTP/1.1 200 OK
+            Content-Length: 3 
+            Content-Type: text/plain; charset=UTF-8 
+            Connection: keep-alive
 
-                bar
-                
-            """.trimIndent(),
-            connektOutput.asString()
+            bar
+            
+        """.trimIndent(),
+            output
         )
     }
 
-    private fun runScriptWithServer(
-        requestNumber: Int? = null,
-        configure: ConnektBuilder.(host: String) -> Unit
-    ): TestEnvironment {
-        lateinit var evnHost: String
-        runWithServer { host ->
-            evnHost = host
-            val connektBuilder = createConnektBuilder()
-            connektBuilder.configure(host)
-            connektBuilder.runScript(requestNumber)
-        }
-        return TestEnvironment(evnHost)
-    }
-
-    private fun runWithServer(block: (host: String) -> Unit) {
-        val server = embeddedServer(
-            Netty,
-            port = 0
-        ) {
-            routing {
-                get("foo") {
-                    call.respondText("foo")
-                }
-                get("bar") {
-                    call.respondText("bar")
-                }
+    @Test
+    fun testJsonFormatting() {
+        createConnektBuilder()
+            .runScript(0) {
+                GET("$host/one-line-json-object")
             }
-        }
-
-        try {
-            server.start(false)
-            val port = runBlocking {
-                server.engine.resolvedConnectors().first().port
+            .let { output ->
+                assertEquals(
+                    //language=json
+                    """
+                    {
+                      "foo" : "f",
+                      "bar" : "b",
+                      "baz" : 3
+                    }
+                    """.trimIndent(),
+                    extractBodyString(output)
+                )
             }
-            block("http://localhost:$port")
-        } finally {
-            server.stop()
-        }
-    }
 
-    private fun createConnektBuilder(
-        db: DB = DBMaker.memoryDB().make(),
-        environmentStore: EnvironmentStore = NoOpEnvironmentStore,
-    ): ConnektBuilder {
-        val intoStringPrinter = StringBuilderPrinter()
-        connektOutput = intoStringPrinter
-        val connektContext = ConnektContext(
-            db,
-            environmentStore,
-            VariablesStore(db),
-            MultiPrinter(SystemOutPrinter, intoStringPrinter)
-        )
-        val connektBuilder = ConnektBuilder(connektContext)
-        return connektBuilder
-    }
-
-    class MultiPrinter(private val printers: List<Printer>) : Printer {
-
-        constructor(vararg printers: Printer) : this(printers.toList())
-
-        override fun print(text: String, color: Printer.Color?) {
-            printers.forEach { printer ->
-                printer.print(text, color)
+        createConnektBuilder()
+            .runScript(0) {
+                GET("$host/one-line-json-array")
             }
+            .let { output ->
+                assertEquals(
+                    //language=json
+                    """
+                        [ 1, 2, 3 ]
+                    """.trimIndent(),
+                    extractBodyString(output)
+                )
+            }
+
+        createConnektBuilder()
+            .runScript(0) {
+                GET("$host/invalid-json-object")
+            }
+            .let { output ->
+                assertEquals(
+                    "foo bar",
+                    extractBodyString(output)
+                )
+            }
+    }
+
+    lateinit var server: EmbeddedServer<*, *>
+    lateinit var host: String
+
+    @BeforeAll
+    fun before() {
+        server = createTestServer()
+        server.start(false)
+        val port = runBlocking {
+            server.engine.resolvedConnectors().first().port
         }
+        host = "http://localhost:$port"
     }
 
-    class StringBuilderPrinter : BaseNonColorPrinter(), StringContentHolder {
-        private val sb = StringBuilder()
-
-        override fun print(s: String) {
-            sb.append(s)
-        }
-
-        override fun asString(): String = sb.toString()
+    @AfterAll
+    fun after() {
+        server.stop()
     }
-
-    interface StringContentHolder {
-        fun asString(): String
-    }
-
 }
+
+private fun createTestServer() = embeddedServer(
+    Netty,
+    port = 0
+) {
+    routing {
+        get("foo") {
+            call.respondText("foo")
+        }
+        get("bar") {
+            call.respondText("bar")
+        }
+        get("one-line-json-object") {
+            call.respondText(
+                //language=json
+                """{"foo": "f", "bar": "b", "baz": 3}""",
+                contentType = ContentType.Application.Json
+            )
+        }
+        get("one-line-json-array") {
+            call.respondText(
+                //language=json
+                """[1,2,3]""",
+                contentType = ContentType.Application.Json
+            )
+        }
+        get("invalid-json-object") {
+            call.respondText(
+                "foo bar",
+                contentType = ContentType.Application.Json
+            )
+        }
+    }
+}
+
+private fun createConnektBuilder(
+    db: DB = DBMaker.memoryDB().make(),
+    environmentStore: EnvironmentStore = NoOpEnvironmentStore,
+): ConnektBuilder {
+    val connektContext = ConnektContext(
+        db,
+        environmentStore,
+        VariablesStore(db),
+        TestPrinter()
+    )
+    val connektBuilder = ConnektBuilder(connektContext)
+    return connektBuilder
+}
+
+class TestPrinter : Printer {
+
+    val stringPrinter = StringBuilderPrinter()
+
+    override fun print(text: String, color: Printer.Color?) {
+        sequenceOf(SystemOutPrinter, stringPrinter).forEach { printer ->
+            printer.print(text, color)
+        }
+    }
+}
+
+class StringBuilderPrinter : BaseNonColorPrinter() {
+    private val sb = StringBuilder()
+
+    override fun print(s: String) {
+        sb.append(s)
+    }
+
+    fun asString(): String = sb.toString()
+}
+
+fun extractBodyString(s: String): String = s.split("\n\n")
+    .last()
+    .removeSuffix("\n")
 
 fun ConnektBuilder.runScript(
     requestNumber: Int? = null,
     configure: ConnektBuilder.() -> Unit = { }
-) {
+): String {
     this.configure()
     RequestExecutor.execute(this, requestNumber)
+    return (connektContext.printer as TestPrinter).stringPrinter.asString()
 }
-
-data class TestEnvironment(val serverHost: String)
