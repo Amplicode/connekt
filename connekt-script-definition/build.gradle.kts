@@ -22,8 +22,11 @@ dependencies {
     api("org.mapdb:mapdb:3.1.0")
 
     testImplementation(kotlin("test"))
-    testImplementation("io.ktor:ktor-server-core-jvm:3.0.2")
-    testImplementation("io.ktor:ktor-server-netty-jvm:3.0.2")
+    val ktorVersion = "3.0.2"
+    testImplementation("io.ktor:ktor-server-core-jvm:$ktorVersion")
+    testImplementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")
+    testImplementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
+    testImplementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
 }
 
 // Copy sources into the jar to attach them in IDE

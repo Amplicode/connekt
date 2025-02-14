@@ -12,10 +12,15 @@ import io.amplicode.connekt.console.Printer
 import io.amplicode.connekt.console.SystemOutPrinter
 import io.amplicode.connekt.dsl.ConnektBuilder
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.DefaultJson
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.application.install
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.util.toMap
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -23,6 +28,8 @@ import org.junit.jupiter.api.TestInstance
 import org.mapdb.DB
 import org.mapdb.DBMaker
 import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
@@ -48,7 +55,7 @@ class DslTest {
 
     @Test
     fun testVarSyntax() {
-        createConnektBuilder().runScript {
+        runScript {
             val myVar by variable<String>()
             val myInt by vars.int()
 
@@ -82,7 +89,7 @@ class DslTest {
 
     @Test
     fun testRunEntireScript() {
-        createConnektBuilder().runScript {
+        runScript {
             GET("$host/foo")
             GET("$host/bar")
         }
@@ -90,8 +97,7 @@ class DslTest {
 
     @Test
     fun testDelegatedPropertiesRequest() {
-        val connektBuilder = createConnektBuilder()
-        val output = connektBuilder.runScript(1) {
+        val output = runScript(1) {
             val fooRequest by GET("$host/foo") then {
                 body!!.string()
             }
@@ -138,8 +144,7 @@ class DslTest {
 
     @Test
     fun testJsonFormatting() {
-        createConnektBuilder()
-            .runScript(0) {
+        runScript(0) {
                 GET("$host/one-line-json-object")
             }
             .let { output ->
@@ -156,8 +161,7 @@ class DslTest {
                 )
             }
 
-        createConnektBuilder()
-            .runScript(0) {
+        runScript(0) {
                 GET("$host/one-line-json-array")
             }
             .let { output ->
@@ -170,8 +174,7 @@ class DslTest {
                 )
             }
 
-        createConnektBuilder()
-            .runScript(0) {
+        runScript(0) {
                 GET("$host/invalid-json-object")
             }
             .let { output ->
@@ -180,6 +183,23 @@ class DslTest {
                     extractBodyString(output)
                 )
             }
+    }
+
+    @Test
+    fun `test repeated headers`() {
+        val output = runScript {
+            GET("$host/headers-test") {
+                header("a-header", "a-1")
+                header("a-header", "a-2")
+            }
+        }
+        val body = extractBodyString(output)
+        val responseObject: Map<String, List<String>> = DefaultJson.decodeFromString(body)
+        assertContains(responseObject, "a-header")
+        assertContentEquals(
+            listOf("a-1", "a-2"),
+            responseObject["a-header"]
+        )
     }
 
     lateinit var server: EmbeddedServer<*, *>
@@ -205,6 +225,10 @@ private fun createTestServer() = embeddedServer(
     Netty,
     port = 0
 ) {
+    install(ContentNegotiation) {
+        json()
+    }
+
     routing {
         get("foo") {
             call.respondText("foo")
@@ -232,8 +256,41 @@ private fun createTestServer() = embeddedServer(
                 contentType = ContentType.Application.Json
             )
         }
+        // mirrors headers from request
+        get("headers-test") {
+            val headersMap = call.request.headers.toMap()
+            call.respond(headersMap)
+        }
     }
 }
+
+class TestPrinter : Printer {
+    val stringPrinter = StringBuilderPrinter()
+
+    override fun print(text: String, color: Printer.Color?) {
+        sequenceOf(SystemOutPrinter, stringPrinter).forEach { printer ->
+            printer.print(text, color)
+        }
+    }
+}
+
+class StringBuilderPrinter : BaseNonColorPrinter() {
+    private val sb = StringBuilder()
+    override fun print(s: String) {
+        sb.append(s)
+    }
+
+    fun asString(): String = sb.toString()
+}
+
+fun extractBodyString(s: String): String = s.split("\n\n")
+    .last()
+    .removeSuffix("\n")
+
+private fun runScript(
+    requestNumber: Int? = null,
+    configure: ConnektBuilder.() -> Unit = { }
+) = createConnektBuilder().runScript(requestNumber, configure)
 
 private fun createConnektBuilder(
     db: DB = DBMaker.memoryDB().make(),
@@ -248,31 +305,6 @@ private fun createConnektBuilder(
     val connektBuilder = ConnektBuilder(connektContext)
     return connektBuilder
 }
-
-class TestPrinter : Printer {
-
-    val stringPrinter = StringBuilderPrinter()
-
-    override fun print(text: String, color: Printer.Color?) {
-        sequenceOf(SystemOutPrinter, stringPrinter).forEach { printer ->
-            printer.print(text, color)
-        }
-    }
-}
-
-class StringBuilderPrinter : BaseNonColorPrinter() {
-    private val sb = StringBuilder()
-
-    override fun print(s: String) {
-        sb.append(s)
-    }
-
-    fun asString(): String = sb.toString()
-}
-
-fun extractBodyString(s: String): String = s.split("\n\n")
-    .last()
-    .removeSuffix("\n")
 
 fun ConnektBuilder.runScript(
     requestNumber: Int? = null,
