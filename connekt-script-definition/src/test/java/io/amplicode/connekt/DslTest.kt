@@ -12,26 +12,22 @@ import io.amplicode.connekt.console.Printer
 import io.amplicode.connekt.console.SystemOutPrinter
 import io.amplicode.connekt.dsl.ConnektBuilder
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.DefaultJson
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.install
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.util.toMap
+import io.ktor.util.*
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
 import org.mapdb.DB
 import org.mapdb.DBMaker
-import kotlin.test.Test
-import kotlin.test.assertContains
-import kotlin.test.assertContentEquals
-import kotlin.test.assertEquals
-import kotlin.test.assertNull
+import kotlin.io.path.createTempFile
+import kotlin.test.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DslTest {
@@ -145,44 +141,41 @@ class DslTest {
     @Test
     fun testJsonFormatting() {
         runScript(0) {
-                GET("$host/one-line-json-object")
-            }
-            .let { output ->
-                assertEquals(
-                    //language=json
-                    """
+            GET("$host/one-line-json-object")
+        }.let { output ->
+            assertEquals(
+                //language=json
+                """
                     {
                       "foo" : "f",
                       "bar" : "b",
                       "baz" : 3
                     }
                     """.trimIndent(),
-                    extractBodyString(output)
-                )
-            }
+                extractBodyString(output)
+            )
+        }
 
         runScript(0) {
-                GET("$host/one-line-json-array")
-            }
-            .let { output ->
-                assertEquals(
-                    //language=json
-                    """
+            GET("$host/one-line-json-array")
+        }.let { output ->
+            assertEquals(
+                //language=json
+                """
                         [ 1, 2, 3 ]
                     """.trimIndent(),
-                    extractBodyString(output)
-                )
-            }
+                extractBodyString(output)
+            )
+        }
 
         runScript(0) {
-                GET("$host/invalid-json-object")
-            }
-            .let { output ->
-                assertEquals(
-                    "foo bar",
-                    extractBodyString(output)
-                )
-            }
+            GET("$host/invalid-json-object")
+        }.let { output ->
+            assertEquals(
+                "foo bar",
+                extractBodyString(output)
+            )
+        }
     }
 
     @Test
@@ -200,6 +193,38 @@ class DslTest {
             listOf("a-1", "a-2"),
             responseObject["a-header"]
         )
+    }
+
+    @Test
+    fun `test caching of value delegated by request`() {
+        val dbTempFile = createTempFile("connekt-test.db")
+            .toFile()
+            .also {
+                it.delete()
+                it.deleteOnExit()
+            }
+
+        // Run the script twice and make sure `counterResponse`
+        // is not overwritten on second run
+        repeat(2) { timeNumber ->
+            runScript(
+                1,
+                createConnektBuilder(DBMaker.fileDB(dbTempFile).make())
+            ) {
+                val counterResponse: String by GET("$host/counter") {
+                    // make sure that counter is set to '0' on very first run
+                    if (timeNumber == 0) {
+                        queryParam("reset", "true")
+                    }
+                } then {
+                    body!!.string()
+                }
+
+                GET("$host/foo") {
+                    assertEquals("0", counterResponse)
+                }
+            }
+        }
     }
 
     lateinit var server: EmbeddedServer<*, *>
@@ -225,6 +250,8 @@ private fun createTestServer() = embeddedServer(
     Netty,
     port = 0
 ) {
+    var counter = 0
+
     install(ContentNegotiation) {
         json()
     }
@@ -261,6 +288,12 @@ private fun createTestServer() = embeddedServer(
             val headersMap = call.request.headers.toMap()
             call.respond(headersMap)
         }
+        get("counter") {
+            if (call.queryParameters["reset"]?.toBoolean() == true) {
+                counter = 0
+            }
+            call.respond(counter++)
+        }
     }
 }
 
@@ -289,8 +322,9 @@ fun extractBodyString(s: String): String = s.split("\n\n")
 
 private fun runScript(
     requestNumber: Int? = null,
+    connektBuilder: ConnektBuilder = createConnektBuilder(),
     configure: ConnektBuilder.() -> Unit = { }
-) = createConnektBuilder().runScript(requestNumber, configure)
+) = connektBuilder.runScript(requestNumber, configure)
 
 private fun createConnektBuilder(
     db: DB = DBMaker.memoryDB().make(),
