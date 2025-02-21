@@ -172,7 +172,7 @@ class ConnektBuilder(
         return read(path)
     }
 
-    fun ReadContext.readLong(path: String): Int {
+    fun ReadContext.readLong(path: String): Long {
         return read(path)
     }
 
