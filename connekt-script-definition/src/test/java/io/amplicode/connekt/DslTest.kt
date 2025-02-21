@@ -300,6 +300,26 @@ class DslTest {
         assertEquals(text, outputFile.readText())
     }
 
+    @Test
+    fun `test flow`() {
+        runScript {
+            flow("my-flow") {
+                val toSend = listOf(
+                    "foo", "bar", "baz"
+                )
+                toSend.forEach { payload ->
+                    val result = POST("$host/echo-body") {
+                        body(payload)
+                    }.then {
+                        body?.string()
+                    }.execute()
+
+                    assertEquals( payload, result)
+                }
+            }
+        }
+    }
+
     lateinit var server: EmbeddedServer<*, *>
     lateinit var host: String
 
