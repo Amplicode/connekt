@@ -7,26 +7,18 @@
 
 package io.amplicode.connekt
 
-import io.amplicode.connekt.console.BaseNonColorPrinter
-import io.amplicode.connekt.console.Printer
-import io.amplicode.connekt.console.SystemOutPrinter
-import io.amplicode.connekt.dsl.ConnektBuilder
-import io.ktor.http.*
+import io.amplicode.connekt.test.utils.createConnektBuilder
+import io.amplicode.connekt.test.utils.createTestServer
+import io.amplicode.connekt.test.utils.runScript
 import io.ktor.serialization.kotlinx.json.*
-import io.ktor.server.application.*
 import io.ktor.server.engine.*
-import io.ktor.server.netty.*
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
-import io.ktor.util.*
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
-import org.mapdb.DB
 import org.mapdb.DBMaker
 import kotlin.io.path.createTempFile
+import kotlin.io.path.writeText
 import kotlin.test.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -227,6 +219,87 @@ class DslTest {
         }
     }
 
+    @Test
+    // TODO add assertions
+    fun `test multipart request`() {
+        runScript {
+            // Data to be sent
+            val firstInputFile = createTempFile().let {
+                it.writeText("first file input")
+                it.toFile()
+            }
+            val secondInputText = "second file input"
+            val thirdInputFile = createTempFile().let {
+                it.writeText("third file input")
+                it.toFile()
+            }
+
+            POST("$host/multipart-test") {
+                contentType("multipart/form-data; boundary=boundary")
+                multipart {
+                    // First
+                    file("first", "input.txt", firstInputFile)
+
+                    // Second
+                    val secondInputFile = createTempFile()
+                        .let {
+                            it.writeText(secondInputText)
+                            it.toFile()
+                        }
+                    file("second", "input-second.txt", secondInputFile)
+
+                    // Third
+                    part("third") {
+                        val bodyText = thirdInputFile.readText()
+                        body(bodyText)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `test form data request`() {
+        runScript {
+            POST("$host/echo-form-params") {
+                formData {
+                    field("id", 999)
+                    field("value", "content")
+                    field("fact", "IntelliJ + HTTP Client = <3")
+                }
+            } then {
+                val echoedFormParams = jsonPath().json<Map<String, List<String>>>()
+                assertEquals(
+                    mapOf(
+                        "id" to listOf("999"),
+                        "value" to listOf("content"),
+                        "fact" to listOf("IntelliJ + HTTP Client = <3"),
+                    ),
+                    echoedFormParams
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `test store request into file`() {
+        val outputFile = createTempFile().toFile().also {
+            it.deleteOnExit()
+        }
+
+        val text = """
+            lorem ipsum dolor sit amet
+        """.trimIndent()
+        runScript {
+            POST("$host/echo-body") {
+                body(text)
+            }.then {
+                outputFile.writeText(body?.string() ?: "")
+            }
+        }
+        assertEquals(text, outputFile.readText())
+    }
+
     lateinit var server: EmbeddedServer<*, *>
     lateinit var host: String
 
@@ -246,105 +319,6 @@ class DslTest {
     }
 }
 
-private fun createTestServer() = embeddedServer(
-    Netty,
-    port = 0
-) {
-    var counter = 0
-
-    install(ContentNegotiation) {
-        json()
-    }
-
-    routing {
-        get("foo") {
-            call.respondText("foo")
-        }
-        get("bar") {
-            call.respondText("bar")
-        }
-        get("one-line-json-object") {
-            call.respondText(
-                //language=json
-                """{"foo": "f", "bar": "b", "baz": 3}""",
-                contentType = ContentType.Application.Json
-            )
-        }
-        get("one-line-json-array") {
-            call.respondText(
-                //language=json
-                """[1,2,3]""",
-                contentType = ContentType.Application.Json
-            )
-        }
-        get("invalid-json-object") {
-            call.respondText(
-                "foo bar",
-                contentType = ContentType.Application.Json
-            )
-        }
-        // mirrors headers from request
-        get("headers-test") {
-            val headersMap = call.request.headers.toMap()
-            call.respond(headersMap)
-        }
-        get("counter") {
-            if (call.queryParameters["reset"]?.toBoolean() == true) {
-                counter = 0
-            }
-            call.respond(counter++)
-        }
-    }
-}
-
-class TestPrinter : Printer {
-    val stringPrinter = StringBuilderPrinter()
-
-    override fun print(text: String, color: Printer.Color?) {
-        sequenceOf(SystemOutPrinter, stringPrinter).forEach { printer ->
-            printer.print(text, color)
-        }
-    }
-}
-
-class StringBuilderPrinter : BaseNonColorPrinter() {
-    private val sb = StringBuilder()
-    override fun print(s: String) {
-        sb.append(s)
-    }
-
-    fun asString(): String = sb.toString()
-}
-
 fun extractBodyString(s: String): String = s.split("\n\n")
     .last()
     .removeSuffix("\n")
-
-private fun runScript(
-    requestNumber: Int? = null,
-    connektBuilder: ConnektBuilder = createConnektBuilder(),
-    configure: ConnektBuilder.() -> Unit = { }
-) = connektBuilder.runScript(requestNumber, configure)
-
-private fun createConnektBuilder(
-    db: DB = DBMaker.memoryDB().make(),
-    environmentStore: EnvironmentStore = NoOpEnvironmentStore,
-): ConnektBuilder {
-    val connektContext = ConnektContext(
-        db,
-        environmentStore,
-        VariablesStore(db),
-        TestPrinter()
-    )
-    val connektBuilder = ConnektBuilder(connektContext)
-    return connektBuilder
-}
-
-fun ConnektBuilder.runScript(
-    requestNumber: Int? = null,
-    configure: ConnektBuilder.() -> Unit = { }
-): String {
-    this.configure()
-    RequestExecutor.execute(this, requestNumber)
-    return (connektContext.printer as TestPrinter).stringPrinter.asString()
-}

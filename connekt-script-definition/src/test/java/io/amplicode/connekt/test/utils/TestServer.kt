@@ -1,0 +1,76 @@
+package io.amplicode.connekt.test.utils
+
+import io.ktor.http.ContentType
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.application.install
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.request.receiveParameters
+import io.ktor.server.request.receiveText
+import io.ktor.server.response.respond
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.get
+import io.ktor.server.routing.post
+import io.ktor.server.routing.routing
+import io.ktor.util.toMap
+import kotlin.text.toBoolean
+
+fun createTestServer() = embeddedServer(
+    Netty,
+    port = 0
+) {
+    var counter = 0
+
+    install(ContentNegotiation) {
+        json()
+    }
+
+    routing {
+        get("foo") {
+            call.respondText("foo")
+        }
+        get("bar") {
+            call.respondText("bar")
+        }
+        get("one-line-json-object") {
+            call.respondText(
+                //language=json
+                """{"foo": "f", "bar": "b", "baz": 3}""",
+                contentType = ContentType.Application.Json
+            )
+        }
+        get("one-line-json-array") {
+            call.respondText(
+                //language=json
+                """[1,2,3]""",
+                contentType = ContentType.Application.Json
+            )
+        }
+        get("invalid-json-object") {
+            call.respondText(
+                "foo bar",
+                contentType = ContentType.Application.Json
+            )
+        }
+        // mirrors headers from request
+        get("headers-test") {
+            val headersMap = call.request.headers.toMap()
+            call.respond(headersMap)
+        }
+        get("counter") {
+            if (call.queryParameters["reset"]?.toBoolean() == true) {
+                counter = 0
+            }
+            call.respond(counter++)
+        }
+        post("echo-form-params") {
+            val params = call.receiveParameters().toMap()
+            call.respond(params)
+        }
+        post("echo-body") {
+            val bodyText = call.receiveText()
+            call.respondText(bodyText)
+        }
+    }
+}
