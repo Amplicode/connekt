@@ -345,8 +345,8 @@ class DslTest {
     fun `test path params`() {
         runScript {
             GET("$host/echo-path/{foo}/bar/{baz}") {
-                pathParams("foo", 1)
-                pathParams("baz", 2)
+                pathParam("foo", 1)
+                pathParam("baz", 2)
             }.then {
                 assertEquals(
                     "/1/bar/2",

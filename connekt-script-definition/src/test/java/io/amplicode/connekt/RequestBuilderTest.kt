@@ -14,8 +14,8 @@ class RequestBuilderTest {
             "GET",
             "http://localhost/api/{foo}/{bar-bar}"
         ).apply {
-            pathParams("foo", "1")
-            pathParams("bar-bar", "2")
+            pathParam("foo", "1")
+            pathParam("bar-bar", "2")
             queryParam("q1", 1)
             queryParam("q2", "2")
         }
@@ -40,8 +40,8 @@ class RequestBuilderTest {
                 "GET",
                 "http://localhost/api/{foo}/{bar}/{missing-path-param}"
             ).apply {
-                pathParams("foo", "1")
-                pathParams("bar", "2")
+                pathParam("foo", "1")
+                pathParam("bar", "2")
             }.build()
         }
 

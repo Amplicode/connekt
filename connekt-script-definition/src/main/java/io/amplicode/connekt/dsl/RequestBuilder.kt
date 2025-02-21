@@ -208,7 +208,7 @@ open class BaseRequestBuilder(
         queryParamsMap[key] = value
     }
 
-    fun pathParams(key: String, value: Any) {
+    fun pathParam(key: String, value: Any) {
         pathParamsMap[key] = value
     }
 
