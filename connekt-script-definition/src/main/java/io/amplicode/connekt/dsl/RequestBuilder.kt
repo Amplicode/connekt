@@ -9,11 +9,10 @@ import io.amplicode.connekt.Body
 import io.amplicode.connekt.Header
 import io.amplicode.connekt.HeaderName
 import io.amplicode.connekt.HeaderValue
-import okhttp3.FormBody
-import okhttp3.Headers
-import okhttp3.MediaType
+import io.amplicode.connekt.MissingPathParameterException
+import okhttp3.*
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.internal.http.HttpMethod
 import java.io.File
@@ -214,45 +213,67 @@ open class BaseRequestBuilder(
     }
 
     override fun build(): Request {
-        if (body is FormDataBody) {
-            header("Content-Type", "application/x-www-form-urlencoded")
-        }
+        applyAdditionalHeaders()
+        val requestBuilder = Request.Builder()
+            .headers(buildHeaders(headers))
+            .url(createUrl())
+            .method(method, createBody(body))
+        return requestBuilder.build()
+    }
 
-        body?.let { it as? MultipartBody }?.let {
-            header("Content-Type", "multipart/form-data; boundary=${it.boundary}")
+    private fun applyAdditionalHeaders() {
+        val body = this.body
+        when (body) {
+            is FormDataBody -> header(
+                "Content-Type",
+                "application/x-www-form-urlencoded"
+            )
+
+            is MultipartBody -> header(
+                "Content-Type",
+                "multipart/form-data; boundary=${body.boundary}"
+            )
+
+            else -> {
+                // Do nothing
+            }
         }
 
         if ("User-Agent" !in headers.map { it.first }) {
             header("User-Agent", "connekt/0.0.1")
         }
-
-        val builder = Request.Builder()
-            .headers(
-                buildHeaders(headers)
-            )
-
-        setupUrl(builder)
-
-        val requestBody: okhttp3.RequestBody? = when {
-            body != null -> body!!.toOkHttpBody()
-            HttpMethod.requiresRequestBody(method) -> ByteArray(0).toRequestBody()
-            else -> null
-        }
-
-        builder.method(method, requestBody)
-
-        return builder.build()
     }
 
-    private fun setupUrl(builder: Request.Builder) {
-        val processedPath = path.replace(Regex("""\{(\w+)}""")) { matchResult ->
+    private fun createBody(body: RequestBody?) = when {
+        body != null -> body.toOkHttpBody()
+        HttpMethod.requiresRequestBody(method) -> ByteArray(0).toRequestBody()
+        else -> null
+    }
+
+    private fun createUrl(): HttpUrl {
+        val normalizedPath = path.replacePathParams()
+        return normalizedPath
+            .toHttpUrl()
+            .newBuilder()
+            .also { urlBuilder ->
+                queryParamsMap.forEach { (name, value) ->
+                    urlBuilder.addQueryParameter(name, value.toString())
+                }
+            }
+            .build()
+    }
+
+    private fun String.replacePathParams(): String {
+        val pathParamPattern = Regex(
+            """\{(\p{javaJavaIdentifierStart}[\p{javaJavaIdentifierPart}-]*)\}"""
+        );
+        return replace(pathParamPattern) { matchResult ->
             val paramName = matchResult.groupValues[1]
-            pathParamsMap[paramName]?.toString() ?: throw IllegalArgumentException("Missing path parameter: $paramName")
+            pathParamsMap.getOrElse(paramName) {
+                throw MissingPathParameterException(paramName)
+            }.toString()
         }
-
-        builder.url(processedPath)
     }
-
 }
 
 class GetBuilder(path: String) : BaseRequestBuilder("GET", path)

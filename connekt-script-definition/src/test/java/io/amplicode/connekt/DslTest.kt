@@ -314,8 +314,44 @@ class DslTest {
                         body?.string()
                     }.execute()
 
-                    assertEquals( payload, result)
+                    assertEquals(payload, result)
                 }
+            }
+        }
+    }
+
+    @Test
+    fun `test query params`() {
+        runScript {
+            GET("$host/echo-query-params") {
+                queryParam("foo", 1)
+                queryParam("bar", 2)
+                queryParam("baz", 3)
+            }.then {
+                val params = jsonPath().json<Map<String, List<String>>>()
+                assertEquals(
+                    mapOf(
+                        "foo" to "1",
+                        "bar" to "2",
+                        "baz" to "3"
+                    ),
+                    params.mapValues { (_, value) -> value.single() }
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `test path params`() {
+        runScript {
+            GET("$host/echo-path/{foo}/bar/{baz}") {
+                pathParams("foo", 1)
+                pathParams("baz", 2)
+            }.then {
+                assertEquals(
+                    "/1/bar/2",
+                    body?.string()
+                )
             }
         }
     }

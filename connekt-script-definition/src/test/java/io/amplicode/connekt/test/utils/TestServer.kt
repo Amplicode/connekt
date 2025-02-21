@@ -8,6 +8,7 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.request.receiveText
+import io.ktor.server.request.uri
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
@@ -71,6 +72,16 @@ fun createTestServer() = embeddedServer(
         post("echo-body") {
             val bodyText = call.receiveText()
             call.respondText(bodyText)
+        }
+        get("echo-query-params") {
+            val queryParams = call.queryParameters.toMap()
+            call.respond(queryParams)
+        }
+        get("echo-path/{...}") {
+            val path = call.request
+                .uri
+                .substringAfter("echo-path", "")
+            call.respond(path)
         }
     }
 }
