@@ -12,9 +12,9 @@ class RequestBuilderTest {
     fun `test valid url with placeholders`() {
         val builder = BaseRequestBuilder(
             "GET",
-            "http://localhost/api/{foo}/{bar-bar}"
+            "http://localhost/api/{orderId}/{bar-bar}"
         ).apply {
-            pathParam("foo", "1")
+            pathParam("orderId", "102")
             pathParam("bar-bar", "2")
             queryParam("q1", 1)
             queryParam("q2", "2")
@@ -23,7 +23,7 @@ class RequestBuilderTest {
 
         val expectedRequest = Request.Builder()
             .method("GET", null)
-            .url("http://localhost/api/1/2?q1=1&q2=2")
+            .url("http://localhost/api/102/2?q1=1&q2=2")
             .header("User-Agent", "connekt/0.0.1")
             .build()
 
