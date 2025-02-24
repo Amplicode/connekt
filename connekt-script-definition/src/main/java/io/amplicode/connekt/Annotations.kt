@@ -29,7 +29,9 @@ annotation class RequestPath
 annotation class HeaderName
 
 @Target(AnnotationTarget.VALUE_PARAMETER)
-annotation class HeaderValue
+annotation class HeaderValue(
+    val ofHeader: String = ""
+)
 
 @Target(AnnotationTarget.VALUE_PARAMETER)
 annotation class Header

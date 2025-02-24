@@ -124,11 +124,11 @@ interface RequestBuilderExtensions {
         header("Authorization", "Bearer $token")
     }
 
-    fun BaseRequestBuilder.contentType(contentType: String) {
+    fun BaseRequestBuilder.contentType(@HeaderValue("Content-Type") contentType: String) {
         header("Content-Type", contentType)
     }
 
-    fun BaseRequestBuilder.accept(contentType: String) {
+    fun BaseRequestBuilder.accept(@HeaderValue("Accept") contentType: String) {
         header("Accept", contentType)
     }
 }
