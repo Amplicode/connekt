@@ -14,6 +14,7 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
+import io.ktor.server.util.getOrFail
 import io.ktor.util.toMap
 import kotlin.text.toBoolean
 
@@ -82,6 +83,10 @@ fun createTestServer() = embeddedServer(
                 .uri
                 .substringAfter("echo-path", "")
             call.respond(path)
+        }
+        get("echo-text") {
+            val text = call.parameters.getOrFail("text")
+            call.respondText(text)
         }
     }
 }

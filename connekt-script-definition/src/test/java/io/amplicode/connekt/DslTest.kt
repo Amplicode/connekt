@@ -13,6 +13,7 @@ import io.amplicode.connekt.test.utils.runScript
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.engine.*
 import kotlinx.coroutines.runBlocking
+import okhttp3.Response
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
@@ -354,6 +355,62 @@ class DslTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun `test run delegated request by number`() {
+        val responses = ArrayDeque<String>()
+        runScript(0) {
+            val delegatedRequest by GET("$host/echo-text") {
+                queryParam("text", 0)
+            }.then {
+                responses.addFirst(body!!.string())
+            }
+
+            GET("$host/echo-text") {
+                queryParam("text", 1)
+            }.then {
+                responses.addFirst(body!!.string())
+            }
+        }
+
+        assertContentEquals(
+            listOf("0"),
+            responses.toList()
+        )
+    }
+
+    @Test
+    fun `test inner request builder is ignored`() {
+        val responses = ArrayDeque<String>()
+
+        fun Response.registerResponse(): String {
+            val response = body!!.string()
+            responses.add(response)
+            return response
+        }
+
+        runScript(1) {
+            // 0
+            val echo0 by GET("$host/echo-text") {
+                queryParam("text", 0)
+
+                // 0_1
+                val echo0_1 by GET("$host/echo-text") {
+                    queryParam("text", "0_1")
+                }.then(Response::registerResponse)
+            }.then(Response::registerResponse)
+
+            // 1
+            GET("$host/echo-text") {
+                queryParam("text", 1)
+            }.then(Response::registerResponse)
+        }
+
+        assertContentEquals(
+            listOf("1"),
+            responses.toList()
+        )
     }
 
     lateinit var server: EmbeddedServer<*, *>
