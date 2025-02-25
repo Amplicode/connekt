@@ -2,7 +2,6 @@
  * Copyright (c) Haulmont 2024. All Rights Reserved.
  * Use is subject to license terms.
  */
-
 @file:Suppress("HttpUrlsUsage")
 
 package io.amplicode.connekt
@@ -17,6 +16,7 @@ import okhttp3.Response
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.assertDoesNotThrow
 import org.mapdb.DBMaker
 import kotlin.io.path.createTempFile
 import kotlin.io.path.writeText
@@ -411,6 +411,19 @@ class DslTest {
             listOf("1"),
             responses.toList()
         )
+    }
+
+    @Test
+    fun `run var in flow twice`() {
+        assertDoesNotThrow {
+            runScript(0) {
+                flow("my-flow") {
+                    val request by GET("$host/foo").then { body!!.string() }
+                    request
+                    request
+                }
+            }
+        }
     }
 
     lateinit var server: EmbeddedServer<*, *>

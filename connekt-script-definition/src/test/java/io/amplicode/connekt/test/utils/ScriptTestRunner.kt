@@ -3,6 +3,9 @@ package io.amplicode.connekt.test.utils
 import io.amplicode.connekt.RequestExecutor
 import io.amplicode.connekt.dsl.ConnektBuilder
 
+/**
+ * @param requestNumber request number starting from `0`
+ */
 fun runScript(
     requestNumber: Int? = null,
     connektBuilder: ConnektBuilder = createConnektBuilder(),

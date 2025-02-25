@@ -12,7 +12,6 @@ class ConnektRequest<T : BaseRequestBuilder>(
     internal val context: ConnektContext,
     private val requestConfigurableFactory: () -> T
 ) : Executable<Any?>() {
-    private var executed: Boolean = false
 
     internal var thenCallback: (Response.() -> Any?)? = null
         set(value) {
@@ -27,9 +26,6 @@ class ConnektRequest<T : BaseRequestBuilder>(
     }
 
     override fun execute(): Any? {
-        require(!executed) { "Request can be executed only once" }
-        executed = true
-
         val requestBuilder = requestConfigurableFactory()
 
         if (!requestBuilder.requestHints.noCookies) {
