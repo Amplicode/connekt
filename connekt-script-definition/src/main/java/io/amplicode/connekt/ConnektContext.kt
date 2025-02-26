@@ -15,6 +15,7 @@ import io.amplicode.connekt.console.SystemOutPrinter
 import okhttp3.*
 import org.mapdb.DB
 import org.mapdb.Serializer
+import java.util.concurrent.TimeUnit
 
 class ConnektContext(
     private val db: DB,
@@ -51,6 +52,9 @@ class ConnektContext(
                 builder.followSslRedirects(true)
             }
 
+            builder.readTimeout(1, TimeUnit.MINUTES)
+            builder.writeTimeout(1, TimeUnit.MINUTES)
+
             if (clientConfig.allowCookies) {
                 builder.cookieJar(object : CookieJar {
                     override fun loadForRequest(url: HttpUrl): List<Cookie> {
@@ -84,7 +88,9 @@ class ConnektContext(
         for ((_, client) in clients) {
             client.connectionPool.evictAll()
         }
-        db.close()
+        try {
+            db.close()
+        } catch (_: Exception) {}
     }
 
     companion object {

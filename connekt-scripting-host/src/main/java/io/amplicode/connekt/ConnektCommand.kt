@@ -30,14 +30,13 @@ internal class ConnektCommand : AbstractConnektCommand() {
         val db = DBMaker.fileDB(globalEnvFile)
             .closeOnJvmShutdown()
             .make()
-        try {
-            val connektContext = ConnektContext(
-                db,
-                createEnvStore(),
-                VariablesStore(db)
-            )
 
-            val connektBuilder = ConnektBuilder(connektContext)
+        ConnektContext(
+            db,
+            createEnvStore(),
+            VariablesStore(db)
+        ).use { ctx ->
+            val connektBuilder = ConnektBuilder(ctx)
             val evaluator = Evaluator(useCompilationCache)
 
             val res = evaluator.evalScript(
@@ -56,10 +55,6 @@ internal class ConnektCommand : AbstractConnektCommand() {
                     println(" : ${it.message}" + if (it.exception == null) "" else ": ${it.exception}")
                 }
             }
-        } finally {
-            try {
-                db.close()
-            } catch (_: Exception) {}
         }
     }
 
