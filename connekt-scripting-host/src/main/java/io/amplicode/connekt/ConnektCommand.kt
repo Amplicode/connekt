@@ -27,31 +27,39 @@ internal class ConnektCommand : AbstractConnektCommand() {
         // so ensure it exists
         globalEnvFile.parentFile.mkdirs()
 
-        val db = DBMaker.fileDB(globalEnvFile).make()
-        val connektContext = ConnektContext(
-            db,
-            createEnvStore(),
-            VariablesStore(db)
-        )
+        val db = DBMaker.fileDB(globalEnvFile)
+            .closeOnJvmShutdown()
+            .make()
+        try {
+            val connektContext = ConnektContext(
+                db,
+                createEnvStore(),
+                VariablesStore(db)
+            )
 
-        val connektBuilder = ConnektBuilder(connektContext)
-        val evaluator = Evaluator(useCompilationCache)
+            val connektBuilder = ConnektBuilder(connektContext)
+            val evaluator = Evaluator(useCompilationCache)
 
-        val res = evaluator.evalScript(
-            connektBuilder,
-            FileScriptSource(script),
-            requestNumber?.minus(1)
-        )
+            val res = evaluator.evalScript(
+                connektBuilder,
+                FileScriptSource(script),
+                requestNumber?.minus(1)
+            )
 
-        res.returnValueAsError
-            ?.error
-            ?.printStackTrace()
+            res.returnValueAsError
+                ?.error
+                ?.printStackTrace()
 
-        res.reports.forEach {
-            it.exception?.printStackTrace()
-            if (it.severity > ScriptDiagnostic.Severity.DEBUG) {
-                println(" : ${it.message}" + if (it.exception == null) "" else ": ${it.exception}")
+            res.reports.forEach {
+                it.exception?.printStackTrace()
+                if (it.severity > ScriptDiagnostic.Severity.DEBUG) {
+                    println(" : ${it.message}" + if (it.exception == null) "" else ": ${it.exception}")
+                }
             }
+        } finally {
+            try {
+                db.close()
+            } catch (_: Exception) {}
         }
     }
 
