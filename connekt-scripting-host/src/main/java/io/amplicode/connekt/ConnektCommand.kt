@@ -29,6 +29,7 @@ internal class ConnektCommand : AbstractConnektCommand() {
 
         val db = DBMaker.fileDB(globalEnvFile)
             .closeOnJvmShutdown()
+            .fileChannelEnable()
             .make()
 
         ConnektContext(
