@@ -1,7 +1,7 @@
 val baseUrl: String by env
 val clientSecret: String by env
 
-flow {
+flow(null) {
     val accessToken by POST("http://localhost:9081/realms/conferences/protocol/openid-connect/token") {
         formData {
             field("grant_type", "password")
@@ -12,15 +12,14 @@ flow {
         }
 
         noCookies()
-    } then  {
+    } then {
         jsonPath().read<String>("access_token")
     }
 
     val createdConferenceId by POST("$baseUrl/rest/conference") {
-        headers(
-            HttpHeaders.CONTENT_TYPE to "application/json",
-            "Authorization" to "Bearer $accessToken"
-        )
+        contentType("application/json")
+        bearerAuth(accessToken)
+
         body(
             """
         {
@@ -31,7 +30,7 @@ flow {
         }
         """.trimIndent()
         )
-    } then  {
+    } then {
         jsonPath().readInt("id")
     }
 
@@ -41,7 +40,7 @@ flow {
         val description: String,
     )
 
-    val conferences by GET("$baseUrl/rest/conference") then  {
+    val conferences by GET("$baseUrl/rest/conference") then {
         jsonPath().readList("content", Conference::class.java)
     }
 

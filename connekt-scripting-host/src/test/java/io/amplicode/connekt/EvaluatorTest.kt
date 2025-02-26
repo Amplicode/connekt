@@ -8,6 +8,7 @@ import io.ktor.server.routing.*
 import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
 import org.mapdb.DBMaker
+import java.io.File
 import kotlin.script.experimental.api.EvaluationResult
 import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.isError
@@ -24,9 +25,9 @@ class EvaluatorTest {
         val result = evaluate(
             """
                 val z: String by env
-                
+
                 GET("${'$'}z/hello") {
-                
+
                 }
             """.trimIndent(),
             1
@@ -68,11 +69,11 @@ class EvaluatorTest {
             evaluateThrowing(
                 """
                 GET("http://localhost:$port/foo") {
-                    
+
                 }
-                
+
                 GET("http://localhost:$port/bar") {
-                
+
                 }
                 """.trimIndent(),
                 1
@@ -86,11 +87,11 @@ class EvaluatorTest {
             evaluateThrowing(
                 """
                 val fooRequest by GET("http://localhost:$port/foo") {
-                    
+
                 } then {
                     body!!.string()
                 }
-                
+
                 GET("http://localhost:$port/bar") {
                     queryParam("my-param", fooRequest)
                 }
@@ -134,15 +135,18 @@ class EvaluatorTest {
         val connektContext = ConnektContext(
             db,
             NoOpEnvironmentStore,
-            VariablesStore(db)
+            VariablesStore(db),
+            storageFile = File("storage.json")
         )
         val connektBuilder = ConnektBuilder(connektContext)
         val evaluator = Evaluator(false)
-        return evaluator.evalScript(
-            connektBuilder,
-            StringScriptSource(scriptText),
-            requestNumber
-        )
+        return connektContext.use {
+            evaluator.evalScript(
+                connektBuilder,
+                StringScriptSource(scriptText),
+                requestNumber
+            )
+        }
     }
 
     private fun evaluateThrowing(

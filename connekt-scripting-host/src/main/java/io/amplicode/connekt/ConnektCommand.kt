@@ -31,7 +31,8 @@ internal class ConnektCommand : AbstractConnektCommand() {
         val connektContext = ConnektContext(
             db,
             createEnvStore(),
-            VariablesStore(db)
+            VariablesStore(db),
+            storageFile = storageFile
         )
 
         val connektBuilder = ConnektBuilder(connektContext)
@@ -83,6 +84,12 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
             globalEnvDefaultFile()
         }
 
+    val storageFile by option(help = "Storage file")
+        .file(mustExist = false, canBeDir = false, mustBeReadable = true)
+        .defaultLazy {
+            storageFile()
+        }
+
     val envName by option(help = "Environment name")
 
     val useCompilationCache by option(help = "Use compilation cache")
@@ -94,6 +101,14 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
         return Paths.get(userHome)
             .resolve(".connekt")
             .resolve("connekt-global-env.db")
+            .toFile()
+    }
+
+    private fun storageFile(): File {
+        val userHome = System.getProperty("user.home")
+        return Paths.get(userHome)
+            .resolve(".connekt")
+            .resolve("storage.json")
             .toFile()
     }
 }

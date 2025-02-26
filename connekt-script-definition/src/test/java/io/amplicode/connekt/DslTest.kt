@@ -6,7 +6,8 @@
 
 package io.amplicode.connekt
 
-import io.amplicode.connekt.test.utils.createConnektBuilder
+import io.amplicode.connekt.dsl.ConnektBuilder
+import io.amplicode.connekt.test.utils.createConnektContext
 import io.amplicode.connekt.test.utils.createTestServer
 import io.amplicode.connekt.test.utils.runScript
 import io.ktor.serialization.kotlinx.json.*
@@ -62,16 +63,19 @@ class DslTest {
     @Test
     fun testEnvSyntax() {
         val envStore = InMemoryEnvironmentStore()
-        val connektBuilder = createConnektBuilder(environmentStore = envStore)
+        val connektContext = createConnektContext(environmentStore = envStore)
+        val connektBuilder = ConnektBuilder(connektContext)
         envStore["one"] = 1
         envStore["two"] = "2"
 
-        connektBuilder.runScript {
-            val one: Int by env
-            val two: String by env
-            GET("$host/foo?p=$one") {
-                assertEquals(1, one)
-                assertEquals("2", two)
+        connektContext.use {
+            connektBuilder.runScript {
+                val one: Int by env
+                val two: String by env
+                GET("$host/foo?p=$one") {
+                    assertEquals(1, one)
+                    assertEquals("2", two)
+                }
             }
         }
     }
@@ -86,13 +90,24 @@ class DslTest {
 
     @Test
     fun testDelegatedPropertiesRequest() {
-        val output = runScript(1) {
-            val fooRequest by GET("$host/foo") then {
-                body!!.string()
-            }
+        val connektContext = createConnektContext(
+            storageFile = createTempFile("storage.json")
+                .toFile()
+                .also {
+                    it.delete()
+                    it.deleteOnExit()
+                }
+        )
 
-            GET("$host/bar") {
-                header("param-from-foo-request", fooRequest)
+        val output = connektContext.use {
+            ConnektBuilder(connektContext).runScript(1) {
+                val fooRequest by GET("$host/foo") then {
+                    body!!.string()
+                }
+
+                GET("$host/bar") {
+                    header("param-from-foo-request", fooRequest)
+                }
             }
         }
 
@@ -101,33 +116,33 @@ class DslTest {
             """
             Initializing value for property `fooRequest`
             GET $host/foo
-            User-Agent: connekt/0.0.1 
-            Host: $hostWithoutProtocol 
-            Connection: Keep-Alive 
+            User-Agent: connekt/0.0.1
+            Host: $hostWithoutProtocol
+            Connection: Keep-Alive
             Accept-Encoding: gzip
 
             HTTP/1.1 200 OK
-            Content-Length: 3 
-            Content-Type: text/plain; charset=UTF-8 
+            Content-Length: 3
+            Content-Type: text/plain; charset=UTF-8
             Connection: keep-alive
 
             foo
             GET $host/bar
-            param-from-foo-request: foo 
-            User-Agent: connekt/0.0.1 
-            Host: $hostWithoutProtocol 
-            Connection: Keep-Alive 
+            param-from-foo-request: foo
+            User-Agent: connekt/0.0.1
+            Host: $hostWithoutProtocol
+            Connection: Keep-Alive
             Accept-Encoding: gzip
 
             HTTP/1.1 200 OK
-            Content-Length: 3 
-            Content-Type: text/plain; charset=UTF-8 
+            Content-Length: 3
+            Content-Type: text/plain; charset=UTF-8
             Connection: keep-alive
 
             bar
-            
+
         """.trimIndent(),
-            output
+            output.split("\n").joinToString(separator = "\n") { it.trim() }
         )
     }
 
@@ -197,24 +212,39 @@ class DslTest {
                 it.deleteOnExit()
             }
 
+        val storageFile = createTempFile("storage.json")
+            .toFile()
+            .also {
+                it.delete()
+                it.deleteOnExit()
+            }
+
         // Run the script twice and make sure `counterResponse`
         // is not overwritten on second run
         repeat(2) { timeNumber ->
-            runScript(
-                1,
-                createConnektBuilder(DBMaker.fileDB(dbTempFile).make())
-            ) {
-                val counterResponse: String by GET("$host/counter") {
-                    // make sure that counter is set to '0' on very first run
-                    if (timeNumber == 0) {
-                        queryParam("reset", "true")
-                    }
-                } then {
-                    body!!.string()
-                }
+            val connektContext = createConnektContext(
+                DBMaker.fileDB(dbTempFile).make(),
+                storageFile = storageFile
+            )
+            connektContext.use {
+                runScript(
+                    1,
+                    ConnektBuilder(connektContext)
+                ) {
+                    data class Wrapper(val text: String)
 
-                GET("$host/foo") {
-                    assertEquals("0", counterResponse)
+                    val counterResponse: List<Wrapper> by GET("$host/counter") {
+                        // make sure that counter is set to '0' on very first run
+                        if (timeNumber == 0) {
+                            queryParam("reset", "true")
+                        }
+                    } then {
+                        listOf(Wrapper(body!!.string()))
+                    }
+
+                    GET("$host/foo") {
+                        assertEquals("0", counterResponse[0].text)
+                    }
                 }
             }
         }

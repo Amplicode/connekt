@@ -193,17 +193,24 @@ class ConnektBuilder(
     }
 
 
-    operator fun <R> ConnektRequestHolder<R>.getValue(
+    operator fun <R : Any> ConnektRequestHolder<R>.getValue(
         any: Any?,
         property: KProperty<*>
     ): R {
-        return connektContext.values.getOrPut(property.name) {
-            connektContext.printer.println("Initializing value for property `${property.name}`")
-            when (this) {
-                is Thenable<*> -> execute()
-                is Terminal<*, *> -> execute()
-            }
-        } as R
+        connektContext.storage.getValue<R>(property.getter.returnType, property.name)?.let { return it }
+
+        connektContext.printer.println("Initializing value for property `${property.name}`")
+
+        val value = when (this) {
+            is Thenable<*> -> execute()
+            is Terminal<*, *> -> execute()
+        }
+
+        if (value != null) {
+            connektContext.storage.setValue(property.name, value)
+        }
+
+        return value as R
     }
 }
 

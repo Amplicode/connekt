@@ -15,12 +15,15 @@ import io.amplicode.connekt.console.SystemOutPrinter
 import okhttp3.*
 import org.mapdb.DB
 import org.mapdb.Serializer
+import java.io.File
+import java.util.concurrent.TimeUnit
 
 class ConnektContext(
     private val db: DB,
     val env: EnvironmentStore,
     val vars: VariablesStore,
     val printer: Printer = SystemOutPrinter,
+    private val storageFile: File
 ) : AutoCloseable {
 
     val objectMapper: ObjectMapper by lazy {
@@ -30,6 +33,8 @@ class ConnektContext(
             .enable(JsonParser.Feature.IGNORE_UNDEFINED)
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
     }
+
+    val storage: Storage = Storage(storageFile, objectMapper)
 
     val cookies by lazy {
         db
@@ -45,6 +50,7 @@ class ConnektContext(
     fun getClient(clientConfig: ClientConfig): OkHttpClient {
         return clients.getOrElse(clientConfig) {
             val builder = OkHttpClient.Builder()
+                .readTimeout(120, TimeUnit.SECONDS)
 
             if (clientConfig.allowRedirect) {
                 builder.followRedirects(true)
@@ -84,6 +90,7 @@ class ConnektContext(
         for ((_, client) in clients) {
             client.connectionPool.evictAll()
         }
+        storage.close()
         db.close()
     }
 

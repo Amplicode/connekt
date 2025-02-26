@@ -10,6 +10,7 @@ import io.amplicode.connekt.console.SystemOutPrinter
 import io.amplicode.connekt.dsl.ConnektBuilder
 import org.mapdb.DB
 import org.mapdb.DBMaker
+import java.io.File
 
 fun createConnektBuilder(
     db: DB = DBMaker.memoryDB().make(),
@@ -19,10 +20,25 @@ fun createConnektBuilder(
         db,
         environmentStore,
         VariablesStore(db),
-        TestPrinter()
+        TestPrinter(),
+        File("storage.json")
     )
     val connektBuilder = ConnektBuilder(connektContext)
     return connektBuilder
+}
+
+fun createConnektContext(
+    db: DB = DBMaker.memoryDB().make(),
+    environmentStore: EnvironmentStore = NoOpEnvironmentStore,
+    storageFile: File = File("storage.json")
+): ConnektContext {
+    return ConnektContext(
+        db,
+        environmentStore,
+        VariablesStore(db),
+        TestPrinter(),
+        storageFile
+    )
 }
 
 class TestPrinter : Printer {
