@@ -34,7 +34,7 @@ class ConnektBuilder(
 
     @RequestBuilderCall
     @Request("GET")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun GET(
         @RequestPath path: String,
         configure: GetBuilder.() -> Unit = {}
@@ -44,7 +44,7 @@ class ConnektBuilder(
 
     @RequestBuilderCall
     @Request("POST")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun POST(
         @RequestPath path: String,
         configure: PostBuilder.() -> Unit = {}
@@ -54,7 +54,7 @@ class ConnektBuilder(
 
     @RequestBuilderCall
     @Request("PUT")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun PUT(
         @RequestPath path: String,
         configure: PutBuilder.() -> Unit = {}
@@ -64,7 +64,7 @@ class ConnektBuilder(
 
     @RequestBuilderCall
     @Request("OPTIONS")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun OPTIONS(
         @RequestPath path: String,
         configure: OptionsBuilder.() -> Unit = {}
@@ -74,7 +74,7 @@ class ConnektBuilder(
 
     @RequestBuilderCall
     @Request("PATCH")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun PATCH(
         @RequestPath path: String,
         configure: PatchBuilder.() -> Unit = {}
@@ -84,7 +84,7 @@ class ConnektBuilder(
 
     @RequestBuilderCall
     @Request("DELETE")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun DELETE(
         @RequestPath path: String,
         configure: DeleteBuilder.() -> Unit = {}
@@ -94,7 +94,7 @@ class ConnektBuilder(
 
     @RequestBuilderCall
     @Request("HEAD")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun HEAD(
         @RequestPath path: String,
         configure: HeadBuilder.() -> Unit = {}
@@ -104,7 +104,7 @@ class ConnektBuilder(
 
     @RequestBuilderCall
     @Request("TRACE")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun TRACE(
         @RequestPath path: String,
         configure: TraceBuilder.() -> Unit = {}
@@ -212,7 +212,7 @@ class FlowBuilder(
 ) {
     @RequestBuilderCall
     @Request("GET")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun GET(
         @RequestPath path: String,
         configure: GetBuilder.() -> Unit = {}
@@ -222,7 +222,7 @@ class FlowBuilder(
 
     @RequestBuilderCall
     @Request("POST")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun POST(
         @RequestPath path: String,
         configure: PostBuilder.() -> Unit = {}
@@ -232,7 +232,7 @@ class FlowBuilder(
 
     @RequestBuilderCall
     @Request("PUT")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun PUT(
         @RequestPath path: String,
         configure: PutBuilder.() -> Unit = {}
@@ -242,7 +242,7 @@ class FlowBuilder(
 
     @RequestBuilderCall
     @Request("OPTIONS")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun OPTIONS(
         @RequestPath path: String,
         configure: OptionsBuilder.() -> Unit = {}
@@ -252,7 +252,7 @@ class FlowBuilder(
 
     @RequestBuilderCall
     @Request("PATCH")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun PATCH(
         @RequestPath path: String,
         configure: PatchBuilder.() -> Unit = {}
@@ -262,7 +262,7 @@ class FlowBuilder(
 
     @RequestBuilderCall
     @Request("DELETE")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun DELETE(
         @RequestPath path: String,
         configure: DeleteBuilder.() -> Unit = {}
@@ -272,7 +272,7 @@ class FlowBuilder(
 
     @RequestBuilderCall
     @Request("HEAD")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun HEAD(
         @RequestPath path: String,
         configure: HeadBuilder.() -> Unit = {}
@@ -282,7 +282,7 @@ class FlowBuilder(
 
     @RequestBuilderCall
     @Request("TRACE")
-    @Suppress("FunctionName", "unused")
+    @Suppress("FunctionName")
     fun TRACE(
         @RequestPath path: String,
         configure: TraceBuilder.() -> Unit = {}
@@ -305,13 +305,14 @@ class FlowBuilder(
             connektContext,
             requestBuilderSupplier
         )
+        connektRequest.initResponse()
         return Thenable<T>(connektRequest)
     }
 
-    operator fun <R> ConnektRequestHolder<R>.getValue(any: Any?, property: KProperty<*>): R {
-        return when (this) {
-            is Thenable<*> -> execute() as R
-            is Terminal<*, *> -> execute() as R
-        }
+    operator fun <R> ConnektRequestHolder<R>.getValue(
+        receiver: Any?,
+        property: KProperty<*>
+    ): R {
+        return this.execute()
     }
 }

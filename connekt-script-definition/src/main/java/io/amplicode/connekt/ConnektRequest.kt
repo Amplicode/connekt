@@ -10,7 +10,7 @@ import okhttp3.Response
 
 class ConnektRequest<T : BaseRequestBuilder>(
     internal val context: ConnektContext,
-    private val requestConfigurableFactory: () -> T
+    private val requestBuilderSupplier: () -> T
 ) : Executable<Any?>() {
 
     internal var thenCallback: (Response.() -> Any?)? = null
@@ -19,14 +19,21 @@ class ConnektRequest<T : BaseRequestBuilder>(
             field = value
         }
 
-    @Suppress("unused")
-    infix fun then(thenCallback: Response.() -> Any?): ConnektRequest<T> {
-        this.thenCallback = thenCallback
-        return this
+    private val response by lazy {
+        doRequest()
     }
 
-    override fun execute(): Any? {
-        val requestBuilder = requestConfigurableFactory()
+    fun <R> then(thenCallback: Response.() -> R?) {
+        this.thenCallback = thenCallback
+    }
+
+    fun initResponse() {
+        // init lazy var
+        response
+    }
+
+    private fun doRequest(): Response {
+        val requestBuilder = requestBuilderSupplier()
 
         if (!requestBuilder.requestHints.noCookies) {
             context.cookies.forEach {
@@ -48,7 +55,11 @@ class ConnektRequest<T : BaseRequestBuilder>(
             .newCall(request)
             .execute()
 
+        return response
+    }
 
+    override fun execute(): Any? {
+        val response = response
         val result = thenCallback?.invoke(response)
         return result
     }

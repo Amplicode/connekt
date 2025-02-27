@@ -6,6 +6,9 @@
 
 package io.amplicode.connekt
 
+import io.amplicode.connekt.dsl.ConnektBuilder
+import io.amplicode.connekt.dsl.FlowBuilder
+import io.amplicode.connekt.dsl.PostBuilder
 import io.amplicode.connekt.test.utils.createConnektBuilder
 import io.amplicode.connekt.test.utils.createTestServer
 import io.amplicode.connekt.test.utils.runScript
@@ -18,6 +21,8 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.mapdb.DBMaker
+import java.util.UUID
+import kotlin.collections.ArrayDeque
 import kotlin.io.path.createTempFile
 import kotlin.io.path.writeText
 import kotlin.test.*
@@ -174,7 +179,7 @@ class DslTest {
     @Test
     fun `test repeated headers`() {
         val output = runScript {
-            GET("$host/headers-test") {
+            GET("$host/echo-headers") {
                 header("a-header", "a-1")
                 header("a-header", "a-2")
             }
@@ -199,22 +204,19 @@ class DslTest {
 
         // Run the script twice and make sure `counterResponse`
         // is not overwritten on second run
-        repeat(2) { timeNumber ->
+        repeat(4) { timeNumber ->
             runScript(
                 1,
                 createConnektBuilder(DBMaker.fileDB(dbTempFile).make())
             ) {
-                val counterResponse: String by GET("$host/counter") {
-                    // make sure that counter is set to '0' on very first run
-                    if (timeNumber == 0) {
-                        queryParam("reset", "true")
+                val counterResponse: String by POST("$host/counter/delegator-caching-test/inc")
+                    .then {
+                        body!!.string()
                     }
-                } then {
-                    body!!.string()
-                }
 
                 GET("$host/foo") {
-                    assertEquals("0", counterResponse)
+                    // 1 means that the request above was called only once
+                    assertEquals("1", counterResponse)
                 }
             }
         }
@@ -309,11 +311,11 @@ class DslTest {
                     "foo", "bar", "baz"
                 )
                 toSend.forEach { payload ->
-                    val result = POST("$host/echo-body") {
+                    val result by POST("$host/echo-body") {
                         body(payload)
                     }.then {
                         body?.string()
-                    }.execute()
+                    }
 
                     assertEquals(payload, result)
                 }
@@ -418,10 +420,128 @@ class DslTest {
         assertDoesNotThrow {
             runScript(0) {
                 flow("my-flow") {
-                    val request by GET("$host/foo").then { body!!.string() }
+                    val request = GET("$host/foo").then { body!!.string() }
                     request
                     request
                 }
+            }
+        }
+    }
+
+    @Test
+    fun `cyclic delegators in flow with no then { }`() {
+        val counterKey = uuid()
+        var counterResponse: Int? = null
+
+        runScript {
+            flow("my-flow") {
+                repeat(8) { i ->
+                    val request = POST("$host/counter/{counter}/inc") {
+                        pathParam("counter", counterKey)
+                    }
+                    val prop by request
+                }
+            }
+            GET("$host/counter/{counter}") {
+                pathParam("counter", counterKey)
+            }.then {
+                counterResponse = body!!.string().toInt()
+            }
+        }
+
+        assertEquals(counterResponse, 8)
+    }
+
+    @Test
+    fun `cyclic delegators in flow with then { }`() {
+        val counterKey = uuid()
+        var counterResponse: Int? = null
+        val executionTimes = 14
+
+        runScript {
+            flow("my-flow") {
+                repeat(executionTimes) { i ->
+                    val request = POST("$host/counter/{counter}/inc") {
+                        pathParam("counter", counterKey)
+                    }.then { body!!.string() }
+
+                    val prop by request
+                }
+            }
+            GET("$host/counter/{counter}") {
+                pathParam("counter", counterKey)
+            }.then {
+                counterResponse = body!!.string().toInt()
+            }
+        }
+
+        assertEquals(counterResponse, executionTimes)
+    }
+
+    @Test
+    fun `cyclic requests in flow with no then { }`() {
+        var finalCounterResponse: Int? = null
+
+        runScript {
+            val counterKey = uuid()
+            flow("my-flow") {
+                repeat(5) { i ->
+                    POST("$host/counter/{counter}/inc") {
+                        pathParam("counter", counterKey)
+                    }
+                }
+            }
+
+            GET("$host/counter/{counter}") {
+                pathParam("counter", counterKey)
+            }.then {
+                finalCounterResponse = body?.string()?.toInt()
+            }
+        }
+
+        assertEquals(5, finalCounterResponse)
+    }
+
+    @Test
+    fun `cyclic requests in flow with then { }`() {
+        var finalCounterResponse: Int? = null
+
+        runScript {
+            val counterKey = uuid()
+            flow("my-flow") {
+                repeat(5) { i ->
+                    incCounterRequest(counterKey).then {
+                        // just return some value
+                        i
+                    }
+                }
+            }
+
+            getCounterRequest(counterKey).then {
+                finalCounterResponse = body?.string()?.toInt()
+            }
+        }
+
+        assertEquals(5, finalCounterResponse)
+    }
+
+    @Test
+    fun `lazy vars in flow`() {
+        val counterKey = uuid()
+
+        val counterResults = mutableListOf<Int?>()
+        runScript(0) {
+            flow("my-flow") {
+                val prop by lazy {
+                    incCounterRequest(counterKey)
+                }
+
+                getCounterRequest(counterKey, counterResults::add)
+
+                // call to trigger request
+                prop
+
+                getCounterRequest(counterKey, counterResults::add)
             }
         }
     }
@@ -443,8 +563,28 @@ class DslTest {
     fun after() {
         server.stop()
     }
+
+    private fun ConnektBuilder.getCounterRequest(counterKey: String) = GET("$host/counter/{counter}") {
+        pathParam("counter", counterKey)
+    }
+
+    private fun FlowBuilder.getCounterRequest(
+        counterKey: String,
+        handleValue: (Int) -> Unit = { }
+    ) = GET("$host/counter/{counter}") {
+        pathParam("counter", counterKey)
+    }.then {
+        handleValue(body!!.string().toInt())
+    }
+
+    private fun FlowBuilder.incCounterRequest(counterKey: String): Thenable<PostBuilder> =
+        POST("$host/counter/{counter}/inc") {
+            pathParam("counter", counterKey)
+        }
 }
 
 fun extractBodyString(s: String): String = s.split("\n\n")
     .last()
     .removeSuffix("\n")
+
+private fun uuid() = UUID.randomUUID().toString()
