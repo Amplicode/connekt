@@ -25,8 +25,6 @@ fun createTestServer() = embeddedServer(
     Netty,
     port = 0
 ) {
-    var counter = 0
-
     install(ContentNegotiation) {
         json()
     }

@@ -1,31 +1,103 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.dsl.BaseRequestBuilder
 import okhttp3.Response
 
-sealed interface ConnektRequestHolder<T> {
-    fun execute(): T
+/**
+ * @param T execution result type
+ */
+sealed class ConnektRequestHolder<T>() : Executable<T>() {
+
+    protected val listeners = mutableListOf<ExecutionListener<T>>()
+
+    protected fun fireResult(result: T) {
+        listeners.forEach { listener ->
+            try {
+                listener.onResultObtained(result)
+            } catch (e: Throwable) {
+                // TODO log
+            }
+        }
+    }
+
+    final override fun execute(): T {
+        val result = doExecute()
+        fireResult(result)
+        return result
+    }
+
+    protected abstract fun doExecute(): T
+
+    fun addExecutionListener(listener: ExecutionListener<T>) {
+        listeners.add(listener)
+    }
 }
 
-class Thenable<T : BaseRequestBuilder>(
-    private val connektRequest: ConnektRequest<T>
-) : ConnektRequestHolder<Unit> {
+class RequestHolder(
+    private val connektRequest: ConnektRequest
+) : ConnektRequestHolder<Response>() {
 
-    infix fun <R> then(thenAction: Response.() -> R): Terminal<T, R> {
-        connektRequest.then(thenAction)
-        return Terminal(connektRequest)
+    private var mapper: MappedRequestHolder<*>? = null
+
+    override fun doExecute(): Response {
+        return connektRequest.execute()
     }
 
-    override fun execute() {
-        connektRequest.execute()
+    infix fun <R> then(mapFunction: MapFunction<Response, R>): MappedRequestHolder<R> {
+        val mappedRequestHolder = MappedRequestHolder(
+            this,
+            mapFunction
+        )
+        mapper = mappedRequestHolder
+        return mappedRequestHolder
     }
 }
 
-class Terminal<T : BaseRequestBuilder, R>(
-    private val connektRequest: ConnektRequest<T>
-) : ConnektRequestHolder<R> {
+/**
+ * @param R mapped type
+ */
+class MappedRequestHolder<R>(
+    private val originRequestHolder: ConnektRequestHolder<Response>,
+    private val responseMapper: MapFunction<Response, R>
+) : ConnektRequestHolder<R>() {
 
-    override fun execute(): R {
-        return connektRequest.execute() as R
+    private var response: Response? = null
+    private var result: R? = null
+
+    init {
+        originRequestHolder.onResultObtained(::handleResponse)
     }
+
+    private fun handleResponse(obtainedResponse: Response) {
+        response = obtainedResponse
+        val newResult = responseMapper(obtainedResponse)
+        result = newResult
+        fireResult(newResult)
+    }
+
+    override fun doExecute(): R {
+        result?.let { return it }
+
+        // Request is not yet executed
+        if (response == null) {
+            originRequestHolder.execute()
+            RequestExecutor.ignoreOnExecutionPhase(originRequestHolder)
+        }
+
+        // Expect not to be null once the request is executed
+        return requireNotNull(result)
+    }
+}
+
+typealias MapFunction<L, R> = L.() -> R
+
+interface ExecutionListener<T> {
+    fun onResultObtained(result: T)
+}
+
+fun <T> ConnektRequestHolder<T>.onResultObtained(handleResult: (T) -> Unit) {
+    this.addExecutionListener(object : ExecutionListener<T> {
+        override fun onResultObtained(result: T) {
+            handleResult(result)
+        }
+    })
 }

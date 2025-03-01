@@ -8,7 +8,6 @@ package io.amplicode.connekt
 
 import io.amplicode.connekt.dsl.ConnektBuilder
 import io.amplicode.connekt.dsl.FlowBuilder
-import io.amplicode.connekt.dsl.PostBuilder
 import io.amplicode.connekt.test.utils.createConnektBuilder
 import io.amplicode.connekt.test.utils.createTestServer
 import io.amplicode.connekt.test.utils.runScript
@@ -195,30 +194,63 @@ class DslTest {
 
     @Test
     fun `test caching of value delegated by request`() {
-        val dbTempFile = createTempFile("connekt-test.db")
-            .toFile()
-            .also {
-                it.delete()
-                it.deleteOnExit()
-            }
+        val dbProvider = TempFileDbProvider()
 
         // Run the script twice and make sure `counterResponse`
         // is not overwritten on second run
-        repeat(4) { timeNumber ->
+        repeat(5) { timeNumber ->
             runScript(
-                1,
-                createConnektBuilder(DBMaker.fileDB(dbTempFile).make())
+                requestNumber = 1,
+                connektBuilder = createConnektBuilder(dbProvider.getDb())
             ) {
-                val counterResponse: String by POST("$host/counter/delegator-caching-test/inc")
-                    .then {
-                        body!!.string()
-                    }
+                val counterResponse by incCounterRequest("delegator-caching-test")
+                    .thenBodyString()
 
                 GET("$host/foo") {
                     // 1 means that the request above was called only once
                     assertEquals("1", counterResponse)
                 }
             }
+        }
+    }
+
+    @Test
+    fun `check delegated variable overwrite`() {
+        val counterKey = uuid()
+        val dbProvider = TempFileDbProvider()
+
+        println("1st run")
+        runScript(
+            connektBuilder = createConnektBuilder(dbProvider.getDb())
+        ) {
+            // 1
+            val request = incCounterRequest(counterKey).thenBodyInt()
+
+            val counterVar by request
+
+            assertEquals(1, counterVar)
+            counterVar
+            assertEquals(1, counterVar)
+        }
+
+        // Run delegated request directly to trigger the variable update
+        println("2nd run")
+        runScript(
+            requestNumber = 0,
+            connektBuilder = createConnektBuilder(dbProvider.getDb())
+        ) {
+            val counterVar by incCounterRequest(counterKey).thenBodyInt()
+            // Stays 1 before execution fase
+            assertEquals(1, counterVar, "Second run")
+        }
+
+        println("3d run")
+        runScript(
+            connektBuilder = createConnektBuilder(dbProvider.getDb())
+        ) {
+            val counterVar by incCounterRequest(counterKey).thenBodyInt()
+            // Should be updated to 2 due before execution fase
+            assertEquals(2, counterVar, "Third run")
         }
     }
 
@@ -304,7 +336,30 @@ class DslTest {
     }
 
     @Test
-    fun `test flow`() {
+    fun `test delegated var with then`() {
+        runScript {
+            val value by GET("$host/foo").then {
+                body?.string()
+            }
+
+            assertEquals("foo", value)
+        }
+    }
+
+    @Test
+    fun `test request with then`() {
+        var response: String? = null
+
+        runScript {
+            GET("$host/foo").then {
+                response = body?.string()
+            }
+        }
+        assertEquals("foo", response)
+    }
+
+    @Test
+    fun `test by variables are not cached in flow`() {
         runScript {
             flow("my-flow") {
                 val toSend = listOf(
@@ -314,7 +369,7 @@ class DslTest {
                     val result by POST("$host/echo-body") {
                         body(payload)
                     }.then {
-                        body?.string()
+                        body!!.string()
                     }
 
                     assertEquals(payload, result)
@@ -456,26 +511,25 @@ class DslTest {
     fun `cyclic delegators in flow with then { }`() {
         val counterKey = uuid()
         var counterResponse: Int? = null
-        val executionTimes = 14
+        val executionTimes = 1
 
         runScript {
             flow("my-flow") {
                 repeat(executionTimes) { i ->
-                    val request = POST("$host/counter/{counter}/inc") {
-                        pathParam("counter", counterKey)
-                    }.then { body!!.string() }
-
+                    val request = incCounterRequest(counterKey)
+                        .thenBodyString()
                     val prop by request
+                    prop
+                    prop
+                    prop
                 }
             }
-            GET("$host/counter/{counter}") {
-                pathParam("counter", counterKey)
-            }.then {
-                counterResponse = body!!.string().toInt()
+            getCounterRequest(counterKey).thenBodyString {
+                counterResponse = it.toInt()
             }
         }
 
-        assertEquals(counterResponse, executionTimes)
+        assertEquals(executionTimes, counterResponse)
     }
 
     @Test
@@ -577,7 +631,12 @@ class DslTest {
         handleValue(body!!.string().toInt())
     }
 
-    private fun FlowBuilder.incCounterRequest(counterKey: String): Thenable<PostBuilder> =
+    private fun ConnektBuilder.incCounterRequest(counterKey: String): RequestHolder =
+        POST("$host/counter/{counter}/inc") {
+            pathParam("counter", counterKey)
+        }
+
+    private fun FlowBuilder.incCounterRequest(counterKey: String): RequestHolder =
         POST("$host/counter/{counter}/inc") {
             pathParam("counter", counterKey)
         }
@@ -588,3 +647,24 @@ fun extractBodyString(s: String): String = s.split("\n\n")
     .removeSuffix("\n")
 
 private fun uuid() = UUID.randomUUID().toString()
+
+fun RequestHolder.thenBodyString(handleString: (String) -> Unit = { }) =
+    then {
+        val bodyString = body!!.string()
+        handleString(bodyString)
+        bodyString
+    }
+
+fun RequestHolder.thenBodyInt() =
+    then { body!!.string().toInt() }
+
+class TempFileDbProvider {
+    val dbTempFile = createTempFile("connekt-test.db")
+        .toFile()
+        .also {
+            it.delete()
+            it.deleteOnExit()
+        }
+
+    fun getDb() = DBMaker.fileDB(dbTempFile).make()
+}

@@ -125,7 +125,7 @@ class ConnektBuilder(
     @RequestBuilderCall
     fun flow(
         name: String?,
-        flow: FlowBuilder.() -> Unit = {}
+        buildFlow: FlowBuilder.() -> Unit = {}
     ) {
         val flowBuilder = FlowBuilder(connektContext)
 
@@ -133,7 +133,8 @@ class ConnektBuilder(
             object : Executable<Unit>() {
                 override fun execute() {
                     connektContext.printer.println("Running flow [${name}]")
-                    flowBuilder.flow()
+                    flowBuilder.buildFlow()
+                    flowBuilder.executeRequests()
                 }
             }
         )
@@ -183,136 +184,58 @@ class ConnektBuilder(
         }
     }
 
-    private fun <T : BaseRequestBuilder> addRequest(requestBuilderSupplier: () -> T): Thenable<T> {
+    private fun <T : BaseRequestBuilder> addRequest(requestBuilderSupplier: () -> T): RequestHolder {
         val connektRequest = ConnektRequest(
             connektContext,
             requestBuilderSupplier
         )
-        requests.add(connektRequest)
-        return Thenable(connektRequest)
+        val thenable = RequestHolder(connektRequest)
+        requests.add(thenable)
+        return thenable
     }
 
-
-    operator fun <R> ConnektRequestHolder<R>.getValue(
-        any: Any?,
-        property: KProperty<*>
-    ): R {
-        return connektContext.values.getOrPut(property.name) {
-            connektContext.printer.println("Initializing value for property `${property.name}`")
-            when (this) {
-                is Thenable<*> -> execute()
-                is Terminal<*, *> -> execute()
-            }
-        } as R
+    operator fun <R> ConnektRequestHolder<R>.provideDelegate(
+        @Suppress("unused")
+        receiver: Any?,
+        prop: KProperty<*>
+    ): PersistentRequestDelegate<R> {
+        return PersistentRequestDelegate(connektContext, this, prop.name)
     }
 }
 
-class FlowBuilder(
-    private val connektContext: ConnektContext
+class PersistentRequestDelegate<T>(
+    private val connektContext: ConnektContext,
+    private val requestHolder: ConnektRequestHolder<T>,
+    private val storageKey: String
 ) {
-    @RequestBuilderCall
-    @Request("GET")
-    @Suppress("FunctionName")
-    fun GET(
-        @RequestPath path: String,
-        configure: GetBuilder.() -> Unit = {}
-    ) = addRequest {
-        GetBuilder(path).apply(configure)
+
+    init {
+        requestHolder.onResultObtained {
+            connektContext.values[storageKey] = it
+        }
     }
 
-    @RequestBuilderCall
-    @Request("POST")
-    @Suppress("FunctionName")
-    fun POST(
-        @RequestPath path: String,
-        configure: PostBuilder.() -> Unit = {}
-    ) = addRequest {
-        PostBuilder(path).apply(configure)
+    operator fun getValue(
+        @Suppress("unused") thisRef: Nothing?,
+        @Suppress("unused") property: KProperty<*>
+    ): T {
+        return getValueImpl()
     }
 
-    @RequestBuilderCall
-    @Request("PUT")
-    @Suppress("FunctionName")
-    fun PUT(
-        @RequestPath path: String,
-        configure: PutBuilder.() -> Unit = {}
-    ) = addRequest {
-        PutBuilder(path).apply(configure)
+    operator fun getValue(
+        @Suppress("unused") receiver: Any?,
+        @Suppress("unused") prop: KProperty<*>
+    ): T {
+        return getValueImpl()
     }
 
-    @RequestBuilderCall
-    @Request("OPTIONS")
-    @Suppress("FunctionName")
-    fun OPTIONS(
-        @RequestPath path: String,
-        configure: OptionsBuilder.() -> Unit = {}
-    ) = addRequest {
-        OptionsBuilder(path).apply(configure)
-    }
+    private fun getValueImpl(): T {
+        val storedValue = connektContext.values[storageKey]
+        if (storedValue == null) {
+            connektContext.printer.println("Initializing value for property `$storageKey`")
+            return requestHolder.execute()
+        }
 
-    @RequestBuilderCall
-    @Request("PATCH")
-    @Suppress("FunctionName")
-    fun PATCH(
-        @RequestPath path: String,
-        configure: PatchBuilder.() -> Unit = {}
-    ) = addRequest {
-        PatchBuilder(path).apply(configure)
-    }
-
-    @RequestBuilderCall
-    @Request("DELETE")
-    @Suppress("FunctionName")
-    fun DELETE(
-        @RequestPath path: String,
-        configure: DeleteBuilder.() -> Unit = {}
-    ) = addRequest {
-        DeleteBuilder(path).apply(configure)
-    }
-
-    @RequestBuilderCall
-    @Request("HEAD")
-    @Suppress("FunctionName")
-    fun HEAD(
-        @RequestPath path: String,
-        configure: HeadBuilder.() -> Unit = {}
-    ) = addRequest {
-        HeadBuilder(path).apply(configure)
-    }
-
-    @RequestBuilderCall
-    @Request("TRACE")
-    @Suppress("FunctionName")
-    fun TRACE(
-        @RequestPath path: String,
-        configure: TraceBuilder.() -> Unit = {}
-    ) = addRequest {
-        TraceBuilder(path).apply(configure)
-    }
-
-    @RequestBuilderCall
-    @Suppress("unused")
-    fun request(
-        method: String,
-        @RequestPath path: String,
-        configure: BaseRequestBuilder.() -> Unit = {}
-    ) = addRequest {
-        BaseRequestBuilder(method, path).apply(configure)
-    }
-
-    private fun <T : BaseRequestBuilder> addRequest(requestBuilderSupplier: () -> T): Thenable<T> {
-        val connektRequest = ConnektRequest(
-            connektContext,
-            requestBuilderSupplier
-        )
-        connektRequest.initResponse()
-        return Thenable<T>(connektRequest)
-    }
-
-    operator fun <R> ConnektRequestHolder<R>.getValue(
-        receiver: Any?,
-        property: KProperty<*>
-    ): R {
-        return this.execute()
+        return connektContext.values[storageKey] as T
     }
 }

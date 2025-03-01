@@ -5,62 +5,33 @@
 
 package io.amplicode.connekt
 
+import io.amplicode.connekt.ConnektContext.Companion
 import io.amplicode.connekt.dsl.BaseRequestBuilder
 import okhttp3.Response
 
-class ConnektRequest<T : BaseRequestBuilder>(
+class ConnektRequest(
     internal val context: ConnektContext,
-    private val requestBuilderSupplier: () -> T
-) : Executable<Any?>() {
+    private val requestBuilderSupplier: () -> BaseRequestBuilder
+) {
 
-    internal var thenCallback: (Response.() -> Any?)? = null
-        set(value) {
-            assert(field == null) { "thenCallback already registered" }
-            field = value
-        }
-
-    private val response by lazy {
-        doRequest()
-    }
-
-    fun <R> then(thenCallback: Response.() -> R?) {
-        this.thenCallback = thenCallback
-    }
-
-    fun initResponse() {
-        // init lazy var
-        response
-    }
-
-    private fun doRequest(): Response {
+    fun execute(): Response {
         val requestBuilder = requestBuilderSupplier()
-
         if (!requestBuilder.requestHints.noCookies) {
-            context.cookies.forEach {
+            context.cookies.forEach<String, String> {
                 requestBuilder.header("Cookie", it)
             }
         }
-
         val request = requestBuilder.build()
-
         val client = context.getClient(
-            ConnektContext.Companion.ClientConfig(
+            Companion.ClientConfig(
                 !requestBuilder.requestHints.noCookies,
                 !requestBuilder.requestHints.noRedirect,
                 requestBuilder.requestHints.http2
             )
         )
-
         val response: Response = client
             .newCall(request)
             .execute()
-
         return response
-    }
-
-    override fun execute(): Any? {
-        val response = response
-        val result = thenCallback?.invoke(response)
-        return result
     }
 }

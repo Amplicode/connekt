@@ -75,7 +75,7 @@ class Evaluator(
 
     private fun createCompiledScriptJarsCache() =
         CompiledScriptJarsCache { sourceCode, _ ->
-            val evaluatorVersion = "0.0.1"
+            val evaluatorVersion = "0.0.2"
 
             val cacheKeyValues = sequenceOf(
                 evaluatorVersion,
