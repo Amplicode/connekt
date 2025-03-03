@@ -11,11 +11,7 @@ sealed class ConnektRequestHolder<T>() : Executable<T>() {
 
     protected fun fireResult(result: T) {
         listeners.forEach { listener ->
-            try {
-                listener.onResultObtained(result)
-            } catch (e: Throwable) {
-                // TODO log
-            }
+            listener.onResultObtained(result)
         }
     }
 

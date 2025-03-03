@@ -15,11 +15,14 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.engine.*
 import kotlinx.coroutines.runBlocking
 import okhttp3.Response
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertDoesNotThrow
+import org.junit.jupiter.api.assertThrows
 import org.mapdb.DBMaker
+import org.opentest4j.AssertionFailedError
 import java.util.UUID
 import kotlin.collections.ArrayDeque
 import kotlin.io.path.createTempFile
@@ -347,6 +350,18 @@ class DslTest {
     }
 
     @Test
+    fun `test assertion in then {} of delegated request`() {
+        assertThrows<AssertionFailedError> {
+            runScript {
+                GET("$host/foo").then {
+                    // Trigger assertion error
+                    Assertions.assertThat(2 + 2).isEqualTo(5)
+                }
+            }
+        }
+    }
+
+    @Test
     fun `test request with then`() {
         var response: String? = null
 
@@ -421,7 +436,9 @@ class DslTest {
             val delegatedRequest by GET("$host/echo-text") {
                 queryParam("text", 0)
             }.then {
-                responses.addFirst(body!!.string())
+                val bodyString = body!!.string()
+                responses.addFirst(bodyString)
+                bodyString
             }
 
             GET("$host/echo-text") {
