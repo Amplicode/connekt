@@ -41,18 +41,26 @@ data class RequestHints(
 class MultipartBodyBuilder(private val boundary: String) {
     private val parts = mutableListOf<MultipartBody.Part>()
 
-    fun part(name: String? = null, contentType: String? = null, block: PartBuilder.() -> Unit) {
+    fun part(name: String, contentType: String? = null, block: PartBuilder.() -> Unit) {
         parts.add(PartBuilder(contentType).apply {
-            if (name != null) {
-                contentDisposition(args = listOf("name" to name))
-            }
+            contentDisposition(args = listOf("name" to name))
         }.apply(block).build())
     }
 
-    fun file(name: String, fileName: String, file: File) {
-        part {
-            contentDisposition(args = listOf("name" to name, "filename" to fileName))
-            body(file.readBytes())
+    fun file(name: String, file: File, fileName: String? = file.name, contentType: String? = null) {
+        file(name, file.readBytes(), fileName, contentType)
+    }
+
+    fun file(name: String, bytes: ByteArray, fileName: String? = null, contentType: String? = null) {
+        part(name = name, contentType = contentType) {
+            val contentDispositionArgs = buildList {
+                if (fileName != null) {
+                    add("filename" to fileName)
+                }
+            }
+
+            contentDisposition(args = contentDispositionArgs)
+            body(bytes)
         }
     }
 
@@ -78,7 +86,7 @@ class MultipartBodyBuilder(private val boundary: String) {
             this.body = ByteArrayBody(body)
         }
 
-        fun formDataBody(block: FormDataBodyBuilder.() -> Unit) {
+        fun formData(block: FormDataBodyBuilder.() -> Unit) {
             this.body = FormDataBodyBuilder().apply(block).build()
         }
 
@@ -86,11 +94,25 @@ class MultipartBodyBuilder(private val boundary: String) {
             headers.add(name to value)
         }
 
-        fun contentDisposition(value: String = "form-data", args: List<Pair<String, String>>) {
+        fun contentDisposition(args: List<Pair<String, String>>) {
+            val currentArgs = headers
+                .firstOrNull { it.first == "Content-Disposition" }
+                ?.second
+                ?.toString()
+                ?.split(";")
+                ?.map {
+                    val strings = it.split("=")
+                    strings[0] to strings[1]
+                }
+                ?.toMutableList() ?: mutableListOf()
+
             headers.removeIf { it.first == "Content-Disposition" }
+
+            currentArgs.removeIf { argName -> argName.first in args.map { it.first } }
+
             header(
                 "Content-Disposition",
-                "$value; " + args.joinToString(separator = ";") { it.first + "=" + "\"" + it.second + "\"" })
+                "form-data; " + args.joinToString(separator = ";") { it.first + "=" + "\"" + it.second + "\"" })
         }
 
         internal fun build(): MultipartBody.Part {
@@ -187,7 +209,7 @@ open class BaseRequestBuilder(
         this.body = FormDataBodyBuilder().apply(block).build()
     }
 
-    fun multipart(boundary: String = "boundary", block: MultipartBodyBuilder.() -> Unit) {
+    fun multipart(boundary: String = UUID.randomUUID().toString(), block: MultipartBodyBuilder.() -> Unit) {
         val builder = MultipartBodyBuilder(boundary).apply(block)
         this.body = builder.build()
     }
