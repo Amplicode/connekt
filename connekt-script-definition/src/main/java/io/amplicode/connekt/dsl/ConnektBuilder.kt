@@ -123,18 +123,18 @@ class ConnektBuilder(
     }
 
     @RequestBuilderCall
-    fun flow(
-        name: String?,
-        buildFlow: FlowBuilder.() -> Unit = {}
+    fun useCase(
+        name: String? = null,
+        build: UseCaseBuilder.() -> Unit = {}
     ) {
-        val flowBuilder = FlowBuilder(connektContext)
+        val useCaseBuilder = UseCaseBuilder(connektContext)
 
         requests.add(
             object : Executable<Unit>() {
                 override fun execute() {
                     connektContext.printer.println("Running flow [${name}]")
-                    flowBuilder.buildFlow()
-                    flowBuilder.executeRequests()
+                    useCaseBuilder.build()
+                    useCaseBuilder.executeRequests()
                 }
             }
         )

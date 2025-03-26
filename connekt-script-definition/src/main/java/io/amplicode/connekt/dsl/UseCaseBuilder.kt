@@ -11,7 +11,7 @@ import io.amplicode.connekt.RequestPath
 import io.amplicode.connekt.RequestHolder
 import kotlin.reflect.KProperty
 
-class FlowBuilder(private val connektContext: ConnektContext) {
+class UseCaseBuilder(private val connektContext: ConnektContext) {
     @RequestBuilderCall
     @Request("GET")
     @Suppress("FunctionName")

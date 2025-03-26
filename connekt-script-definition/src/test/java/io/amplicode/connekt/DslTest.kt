@@ -7,7 +7,7 @@
 package io.amplicode.connekt
 
 import io.amplicode.connekt.dsl.ConnektBuilder
-import io.amplicode.connekt.dsl.FlowBuilder
+import io.amplicode.connekt.dsl.UseCaseBuilder
 import io.amplicode.connekt.test.utils.createConnektBuilder
 import io.amplicode.connekt.test.utils.createTestServer
 import io.amplicode.connekt.test.utils.runScript
@@ -376,7 +376,7 @@ class DslTest {
     @Test
     fun `test by variables are not cached in flow`() {
         runScript {
-            flow("my-flow") {
+            useCase("my-flow") {
                 val toSend = listOf(
                     "foo", "bar", "baz"
                 )
@@ -491,7 +491,7 @@ class DslTest {
     fun `run var in flow twice`() {
         assertDoesNotThrow {
             runScript(0) {
-                flow("my-flow") {
+                useCase("my-flow") {
                     val request = GET("$host/foo").then { body!!.string() }
                     request
                     request
@@ -506,7 +506,7 @@ class DslTest {
         var counterResponse: Int? = null
 
         runScript {
-            flow("my-flow") {
+            useCase("my-flow") {
                 repeat(8) { i ->
                     val request = POST("$host/counter/{counter}/inc") {
                         pathParam("counter", counterKey)
@@ -531,7 +531,7 @@ class DslTest {
         val executionTimes = 1
 
         runScript {
-            flow("my-flow") {
+            useCase("my-flow") {
                 repeat(executionTimes) { i ->
                     val request = incCounterRequest(counterKey)
                         .thenBodyString()
@@ -555,7 +555,7 @@ class DslTest {
 
         runScript {
             val counterKey = uuid()
-            flow("my-flow") {
+            useCase("my-flow") {
                 repeat(5) { i ->
                     POST("$host/counter/{counter}/inc") {
                         pathParam("counter", counterKey)
@@ -579,7 +579,7 @@ class DslTest {
 
         runScript {
             val counterKey = uuid()
-            flow("my-flow") {
+            useCase("my-flow") {
                 repeat(5) { i ->
                     incCounterRequest(counterKey).then {
                         // just return some value
@@ -602,7 +602,7 @@ class DslTest {
 
         val counterResults = mutableListOf<Int?>()
         runScript(0) {
-            flow("my-flow") {
+            useCase("my-flow") {
                 val prop by lazy {
                     incCounterRequest(counterKey)
                 }
@@ -639,7 +639,7 @@ class DslTest {
         pathParam("counter", counterKey)
     }
 
-    private fun FlowBuilder.getCounterRequest(
+    private fun UseCaseBuilder.getCounterRequest(
         counterKey: String,
         handleValue: (Int) -> Unit = { }
     ) = GET("$host/counter/{counter}") {
@@ -653,7 +653,7 @@ class DslTest {
             pathParam("counter", counterKey)
         }
 
-    private fun FlowBuilder.incCounterRequest(counterKey: String): RequestHolder =
+    private fun UseCaseBuilder.incCounterRequest(counterKey: String): RequestHolder =
         POST("$host/counter/{counter}/inc") {
             pathParam("counter", counterKey)
         }
