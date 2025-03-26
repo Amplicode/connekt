@@ -9,16 +9,13 @@ package io.amplicode.connekt
 import io.amplicode.connekt.dsl.ConnektBuilder
 import io.amplicode.connekt.dsl.UseCaseBuilder
 import io.amplicode.connekt.test.utils.TestServer
-import io.amplicode.connekt.test.utils.TestServerParamResolver
 import io.amplicode.connekt.test.utils.createConnektBuilder
 import io.amplicode.connekt.test.utils.runScript
 import io.ktor.serialization.kotlinx.json.*
-import okhttp3.Response
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
-import org.junit.jupiter.api.extension.ExtendWith
 import org.mapdb.DBMaker
 import org.opentest4j.AssertionFailedError
 import java.util.UUID

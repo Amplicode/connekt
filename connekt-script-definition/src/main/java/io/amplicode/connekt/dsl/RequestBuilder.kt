@@ -10,6 +10,7 @@ import io.amplicode.connekt.Header
 import io.amplicode.connekt.HeaderName
 import io.amplicode.connekt.HeaderValue
 import io.amplicode.connekt.MissingPathParameterException
+import io.amplicode.connekt.client.ClientConfigurer
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -36,6 +37,32 @@ data class RequestHints(
     var noRedirect: Boolean,
     var http2: Boolean
 )
+
+fun RequestHints.toClientConfigurer(): ClientConfigurer = {
+    if (!noCookies) {
+        cookieJar(object : CookieJar {
+            override fun loadForRequest(url: HttpUrl): List<Cookie> {
+                //todo
+                return listOf()
+            }
+
+            override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+                //todo
+            }
+        })
+    }
+
+    if (!noRedirect) {
+        followRedirects(true)
+        followSslRedirects(true)
+    }
+
+    if (http2) {
+        protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE))
+    }
+
+    this
+}
 
 @ConnektDsl
 class MultipartBodyBuilder(private val boundary: String) {

@@ -1,5 +1,8 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+@Suppress("PropertyName")
+val ktor_version: String by project
+
 plugins {
     kotlin("jvm") version "2.0.21"
 }
@@ -22,11 +25,13 @@ dependencies {
     api("org.mapdb:mapdb:3.1.0")
 
     testImplementation(kotlin("test"))
-    val ktorVersion = "3.0.2"
-    testImplementation("io.ktor:ktor-server-core-jvm:$ktorVersion")
-    testImplementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")
-    testImplementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
-    testImplementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+    testImplementation("io.ktor:ktor-server-core-jvm:$ktor_version")
+    testImplementation("io.ktor:ktor-server-netty-jvm:$ktor_version")
+    testImplementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
+    testImplementation("io.ktor:ktor-serialization-kotlinx-json:$ktor_version")
+    testImplementation("io.ktor:ktor-network-tls-certificates:$ktor_version")
+    testImplementation("org.bouncycastle:bcpkix-jdk15on:1.70")
+    testImplementation("org.junit.platform:junit-platform-launcher")
 }
 
 // Copy sources into the jar to attach them in IDE

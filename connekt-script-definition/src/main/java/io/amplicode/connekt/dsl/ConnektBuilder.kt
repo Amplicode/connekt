@@ -13,6 +13,7 @@ import com.jayway.jsonpath.TypeRef
 import com.jayway.jsonpath.spi.json.JacksonJsonProvider
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider
 import io.amplicode.connekt.*
+import io.amplicode.connekt.client.ClientConfigurer
 import io.amplicode.connekt.console.println
 import okhttp3.Response
 import java.io.ByteArrayInputStream
@@ -30,6 +31,10 @@ class ConnektBuilder(
     @Suppress("unused")
     fun <T> variable(): DelegateProvider<T> {
         return DelegateProvider(connektContext.values)
+    }
+
+    fun configureClient(configure: ClientConfigurer) {
+        connektContext.globalClientConfigurer = configure
     }
 
     @RequestBuilderCall

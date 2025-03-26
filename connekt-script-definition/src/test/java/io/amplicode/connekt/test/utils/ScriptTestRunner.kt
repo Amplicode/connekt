@@ -20,3 +20,5 @@ fun ConnektBuilder.runScript(
     RequestExecutor.execute(this, requestNumber)
     return (connektContext.printer as TestPrinter).stringPrinter.asString()
 }
+
+fun Any?.asUnit() = Unit

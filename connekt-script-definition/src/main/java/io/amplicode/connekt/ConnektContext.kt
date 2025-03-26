@@ -10,19 +10,25 @@ import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.kotlinModule
+import io.amplicode.connekt.client.ClientConfigurer
+import io.amplicode.connekt.client.ClientFactory
+import io.amplicode.connekt.client.ClientFactoryImpl
+import io.amplicode.connekt.client.NoopClientConfigurer
 import io.amplicode.connekt.console.Printer
 import io.amplicode.connekt.console.SystemOutPrinter
-import okhttp3.*
+import okhttp3.OkHttpClient
 import org.mapdb.DB
 import org.mapdb.Serializer
-import java.util.concurrent.TimeUnit
 
 class ConnektContext(
     private val db: DB,
     val env: EnvironmentStore,
     val vars: VariablesStore,
     val printer: Printer = SystemOutPrinter,
+    val clientFactory: ClientFactory = ClientFactoryImpl(printer)
 ) : AutoCloseable {
+
+    var globalClientConfigurer: ClientConfigurer = NoopClientConfigurer
 
     val objectMapper: ObjectMapper by lazy {
         ObjectMapper()
@@ -41,63 +47,17 @@ class ConnektContext(
     val values: MutableMap<String, Any?> =
         db.hashMap("values", Serializer.STRING, Serializer.JAVA).createOrOpen()
 
-    private val clients: MutableMap<ClientConfig, OkHttpClient> = mutableMapOf()
-
-    fun getClient(clientConfig: ClientConfig): OkHttpClient {
-        return clients.getOrElse(clientConfig) {
-            val builder = OkHttpClient.Builder()
-
-            if (clientConfig.allowRedirect) {
-                builder.followRedirects(true)
-                builder.followSslRedirects(true)
-            }
-
-            builder.readTimeout(1, TimeUnit.MINUTES)
-            builder.writeTimeout(1, TimeUnit.MINUTES)
-
-            if (clientConfig.allowCookies) {
-                builder.cookieJar(object : CookieJar {
-                    override fun loadForRequest(url: HttpUrl): List<Cookie> {
-                        //todo
-                        return listOf()
-                    }
-
-                    override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-                        //todo
-                    }
-
-                })
-            }
-
-            if (clientConfig.http2) {
-                builder.protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE))
-            }
-
-            builder.addNetworkInterceptor(CallLogger(printer))
-
-            val client = builder
-                .build()
-
-            clients[clientConfig] = client
-
-            client
+    fun getClient(customizeClient: ClientConfigurer = NoopClientConfigurer): OkHttpClient {
+        return clientFactory.getClient {
+            globalClientConfigurer().customizeClient()
         }
     }
 
     override fun close() {
-        for ((_, client) in clients) {
-            client.connectionPool.evictAll()
-        }
         try {
+            clientFactory.close()
             db.close()
-        } catch (_: Exception) {}
-    }
-
-    companion object {
-        data class ClientConfig(
-            val allowCookies: Boolean,
-            val allowRedirect: Boolean,
-            val http2: Boolean
-        )
+        } catch (_: Exception) {
+        }
     }
 }

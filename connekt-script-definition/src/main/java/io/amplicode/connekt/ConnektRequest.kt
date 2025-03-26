@@ -5,30 +5,24 @@
 
 package io.amplicode.connekt
 
-import io.amplicode.connekt.ConnektContext.Companion
 import io.amplicode.connekt.dsl.BaseRequestBuilder
+import io.amplicode.connekt.dsl.toClientConfigurer
 import okhttp3.Response
 
 class ConnektRequest(
     internal val context: ConnektContext,
     private val requestBuilderSupplier: () -> BaseRequestBuilder
 ) {
-
     fun execute(): Response {
         val requestBuilder = requestBuilderSupplier()
+        val request = requestBuilder.build()
         if (!requestBuilder.requestHints.noCookies) {
             context.cookies.forEach<String, String> {
                 requestBuilder.header("Cookie", it)
             }
         }
-        val request = requestBuilder.build()
-        val client = context.getClient(
-            Companion.ClientConfig(
-                !requestBuilder.requestHints.noCookies,
-                !requestBuilder.requestHints.noRedirect,
-                requestBuilder.requestHints.http2
-            )
-        )
+        val clientConfigurer = requestBuilder.requestHints.toClientConfigurer()
+        val client = context.getClient(clientConfigurer)
         val response: Response = client
             .newCall(request)
             .execute()
