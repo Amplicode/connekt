@@ -8,19 +8,17 @@ package io.amplicode.connekt
 
 import io.amplicode.connekt.dsl.ConnektBuilder
 import io.amplicode.connekt.dsl.UseCaseBuilder
+import io.amplicode.connekt.test.utils.TestServer
+import io.amplicode.connekt.test.utils.TestServerParamResolver
 import io.amplicode.connekt.test.utils.createConnektBuilder
-import io.amplicode.connekt.test.utils.createTestServer
 import io.amplicode.connekt.test.utils.runScript
 import io.ktor.serialization.kotlinx.json.*
-import io.ktor.server.engine.*
-import kotlinx.coroutines.runBlocking
 import okhttp3.Response
 import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.extension.ExtendWith
 import org.mapdb.DBMaker
 import org.opentest4j.AssertionFailedError
 import java.util.UUID
@@ -30,7 +28,7 @@ import kotlin.io.path.writeText
 import kotlin.test.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class DslTest {
+class DslTest(server: TestServer) : TestWithServer(server) {
 
     @Test
     fun simpleTest() {
@@ -84,14 +82,6 @@ class DslTest {
     }
 
     @Test
-    fun testRunEntireScript() {
-        runScript {
-            GET("$host/foo")
-            GET("$host/bar")
-        }
-    }
-
-    @Test
     fun testDelegatedPropertiesRequest() {
         val output = runScript(1) {
             val fooRequest by GET("$host/foo") then {
@@ -136,46 +126,6 @@ class DslTest {
         """.trimIndent(),
             output
         )
-    }
-
-    @Test
-    fun testJsonFormatting() {
-        runScript(0) {
-            GET("$host/one-line-json-object")
-        }.let { output ->
-            assertEquals(
-                //language=json
-                """
-                    {
-                      "foo" : "f",
-                      "bar" : "b",
-                      "baz" : 3
-                    }
-                    """.trimIndent(),
-                extractBodyString(output)
-            )
-        }
-
-        runScript(0) {
-            GET("$host/one-line-json-array")
-        }.let { output ->
-            assertEquals(
-                //language=json
-                """
-                        [ 1, 2, 3 ]
-                    """.trimIndent(),
-                extractBodyString(output)
-            )
-        }
-
-        runScript(0) {
-            GET("$host/invalid-json-object")
-        }.let { output ->
-            assertEquals(
-                "foo bar",
-                extractBodyString(output)
-            )
-        }
     }
 
     @Test
@@ -415,21 +365,6 @@ class DslTest {
     }
 
     @Test
-    fun `test path params`() {
-        runScript {
-            GET("$host/echo-path/{foo}/bar/{baz}") {
-                pathParam("foo", 1)
-                pathParam("baz", 2)
-            }.then {
-                assertEquals(
-                    "/1/bar/2",
-                    body?.string()
-                )
-            }
-        }
-    }
-
-    @Test
     fun `test run delegated request by number`() {
         val responses = ArrayDeque<String>()
         runScript(0) {
@@ -450,39 +385,6 @@ class DslTest {
 
         assertContentEquals(
             listOf("0"),
-            responses.toList()
-        )
-    }
-
-    @Test
-    fun `test inner request builder is ignored`() {
-        val responses = ArrayDeque<String>()
-
-        fun Response.registerResponse(): String {
-            val response = body!!.string()
-            responses.add(response)
-            return response
-        }
-
-        runScript(1) {
-            // 0
-            val echo0 by GET("$host/echo-text") {
-                queryParam("text", 0)
-
-                // 0_1
-                val echo0_1 by GET("$host/echo-text") {
-                    queryParam("text", "0_1")
-                }.then(Response::registerResponse)
-            }.then(Response::registerResponse)
-
-            // 1
-            GET("$host/echo-text") {
-                queryParam("text", 1)
-            }.then(Response::registerResponse)
-        }
-
-        assertContentEquals(
-            listOf("1"),
             responses.toList()
         )
     }
@@ -615,24 +517,6 @@ class DslTest {
                 getCounterRequest(counterKey, counterResults::add)
             }
         }
-    }
-
-    lateinit var server: EmbeddedServer<*, *>
-    lateinit var host: String
-
-    @BeforeAll
-    fun before() {
-        server = createTestServer()
-        server.start(false)
-        val port = runBlocking {
-            server.engine.resolvedConnectors().first().port
-        }
-        host = "http://localhost:$port"
-    }
-
-    @AfterAll
-    fun after() {
-        server.stop()
     }
 
     private fun ConnektBuilder.getCounterRequest(counterKey: String) = GET("$host/counter/{counter}") {

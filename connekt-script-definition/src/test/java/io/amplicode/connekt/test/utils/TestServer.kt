@@ -3,6 +3,7 @@ package io.amplicode.connekt.test.utils
 import io.ktor.http.ContentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.install
+import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
@@ -19,6 +20,8 @@ import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.server.util.getOrFail
 import io.ktor.util.toMap
+import kotlinx.coroutines.runBlocking
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 fun createTestServer() = embeddedServer(
@@ -118,5 +121,23 @@ private fun Routing.counterApi() {
         post("/reset") {
             getCounter().set(0)
         }
+    }
+}
+
+class TestServer(
+    private val server: EmbeddedServer<*, *> = createTestServer()
+) {
+    init {
+        server.start(wait = false)
+    }
+
+    val port = runBlocking {
+        server.engine.resolvedConnectors().first().port
+    }
+
+    val host = "http://localhost:$port"
+
+    fun stop() {
+        server.stop()
     }
 }
