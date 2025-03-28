@@ -6,10 +6,9 @@
 
 package io.amplicode.connekt
 
-import io.amplicode.connekt.dsl.ConnektBuilder
-import io.amplicode.connekt.dsl.UseCaseBuilder
+import io.amplicode.connekt.dsl.*
+import io.amplicode.connekt.test.utils.ConnektContext
 import io.amplicode.connekt.test.utils.TestServer
-import io.amplicode.connekt.test.utils.createConnektBuilder
 import io.amplicode.connekt.test.utils.runScript
 import io.ktor.serialization.kotlinx.json.*
 import org.assertj.core.api.Assertions
@@ -64,11 +63,10 @@ class DslTest(server: TestServer) : TestWithServer(server) {
     @Test
     fun testEnvSyntax() {
         val envStore = InMemoryEnvironmentStore()
-        val connektBuilder = createConnektBuilder(environmentStore = envStore)
         envStore["one"] = 1
         envStore["two"] = "2"
 
-        connektBuilder.runScript {
+        runScript(context = ConnektContext(environmentStore = envStore)) {
             val one: Int by env
             val two: String by env
             GET("$host/foo?p=$one") {
@@ -151,7 +149,7 @@ class DslTest(server: TestServer) : TestWithServer(server) {
         repeat(5) { timeNumber ->
             runScript(
                 requestNumber = 1,
-                connektBuilder = createConnektBuilder(dbProvider.getDb())
+                context = ConnektContext(db = dbProvider.getDb())
             ) {
                 val counterResponse by incCounterRequest("delegator-caching-test")
                     .thenBodyString()
@@ -171,7 +169,7 @@ class DslTest(server: TestServer) : TestWithServer(server) {
 
         println("1st run")
         runScript(
-            connektBuilder = createConnektBuilder(dbProvider.getDb())
+            context = ConnektContext(dbProvider.getDb())
         ) {
             // 1
             val request = incCounterRequest(counterKey).thenBodyInt()
@@ -187,7 +185,7 @@ class DslTest(server: TestServer) : TestWithServer(server) {
         println("2nd run")
         runScript(
             requestNumber = 0,
-            connektBuilder = createConnektBuilder(dbProvider.getDb())
+            context = ConnektContext(dbProvider.getDb())
         ) {
             val counterVar by incCounterRequest(counterKey).thenBodyInt()
             // Stays 1 before execution fase
@@ -196,7 +194,7 @@ class DslTest(server: TestServer) : TestWithServer(server) {
 
         println("3d run")
         runScript(
-            connektBuilder = createConnektBuilder(dbProvider.getDb())
+            context = ConnektContext(dbProvider.getDb())
         ) {
             val counterVar by incCounterRequest(counterKey).thenBodyInt()
             // Should be updated to 2 due before execution fase

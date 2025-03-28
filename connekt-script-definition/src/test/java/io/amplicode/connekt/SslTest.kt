@@ -1,5 +1,6 @@
 package io.amplicode.connekt
 
+import io.amplicode.connekt.dsl.GET
 import io.amplicode.connekt.dsl.applyCertificate
 import io.amplicode.connekt.dsl.applyKeyStore
 import io.amplicode.connekt.test.utils.ServerSslParams

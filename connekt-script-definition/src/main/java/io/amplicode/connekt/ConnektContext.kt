@@ -28,6 +28,14 @@ class ConnektContext(
     val clientFactory: ClientFactory = ClientFactoryImpl(printer)
 ) : AutoCloseable {
 
+    private val _requests: MutableList<Executable<*>> = mutableListOf()
+
+    val requests: List<Executable<*>> = _requests
+
+    fun addRequest(executable: Executable<*>) {
+        _requests.add(executable)
+    }
+
     var globalClientConfigurer: ClientConfigurer = NoopClientConfigurer
 
     val objectMapper: ObjectMapper by lazy {

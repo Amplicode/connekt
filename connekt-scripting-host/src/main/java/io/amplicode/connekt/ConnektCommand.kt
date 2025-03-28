@@ -13,12 +13,15 @@ import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
-import io.amplicode.connekt.dsl.ConnektBuilder
 import org.mapdb.DBMaker
 import java.io.File
 import java.nio.file.Paths
+import kotlin.script.experimental.api.EvaluationResult
+import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.ScriptDiagnostic
+import kotlin.script.experimental.api.SourceCode
 import kotlin.script.experimental.host.FileScriptSource
+import kotlin.script.experimental.jvm.util.isError
 
 internal class ConnektCommand : AbstractConnektCommand() {
 
@@ -33,30 +36,18 @@ internal class ConnektCommand : AbstractConnektCommand() {
             .checksumHeaderBypass()
             .make()
 
-        ConnektContext(
+        val context = ConnektContext(
             db,
             createEnvStore(),
             VariablesStore(db)
-        ).use { ctx ->
-            val connektBuilder = ConnektBuilder(ctx)
-            val evaluator = Evaluator(useCompilationCache)
-
-            val res = evaluator.evalScript(
-                connektBuilder,
+        )
+        context.use { context ->
+            runScript(
+                context,
+                Evaluator(useCompilationCache),
                 FileScriptSource(script),
-                requestNumber?.minus(1)
+                requestNumber
             )
-
-            res.returnValueAsError
-                ?.error
-                ?.printStackTrace()
-
-            res.reports.forEach {
-                it.exception?.printStackTrace()
-                if (it.severity > ScriptDiagnostic.Severity.DEBUG) {
-                    println(" : ${it.message}" + if (it.exception == null) "" else ": ${it.exception}")
-                }
-            }
         }
     }
 
@@ -66,6 +57,37 @@ internal class ConnektCommand : AbstractConnektCommand() {
             FileEnvironmentStore(envFile, envName) else
             NoOpEnvironmentStore
     }
+}
+
+fun runScript(
+    context: ConnektContext,
+    evaluator: Evaluator,
+    scriptSourceCode: SourceCode,
+    requestNumber: Int?
+): ResultWithDiagnostics<EvaluationResult> {
+    val connektBuilder = ConnektBuilder(context)
+
+    val result = evaluator.evalScript(
+        connektBuilder,
+        scriptSourceCode
+    )
+
+    if (result.returnValueAsError == null && !result.isError()) {
+        RequestExecutor.execute(context, requestNumber)
+    }
+
+    result.returnValueAsError
+        ?.error
+        ?.printStackTrace()
+
+    result.reports.forEach {
+        it.exception?.printStackTrace()
+        if (it.severity > ScriptDiagnostic.Severity.DEBUG) {
+            println(" : ${it.message}" + if (it.exception == null) "" else ": ${it.exception}")
+        }
+    }
+
+    return result
 }
 
 abstract class AbstractConnektCommand : CliktCommand("Connekt") {

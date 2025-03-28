@@ -13,14 +13,13 @@ object RequestExecutor {
         executable.execute()
     }
 
-    fun execute(connektBuilder: ConnektBuilder, requestNumber: Int?) {
-        connektBuilder.connektContext.use {
+    fun execute(context: ConnektContext, requestNumber: Int?) {
+        context.use {
             if (requestNumber != null) {
-                val request = connektBuilder.requests[requestNumber]
+                val request = context.requests[requestNumber]
                 execute(request)
             } else {
-                connektBuilder.requests
-                    .forEach { execute(it) }
+                context.requests.forEach { execute(it) }
             }
         }
     }

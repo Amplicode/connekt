@@ -6,6 +6,7 @@
 package io.amplicode.connekt.dsl
 
 import io.amplicode.connekt.Body
+import io.amplicode.connekt.ConnektContext
 import io.amplicode.connekt.Header
 import io.amplicode.connekt.HeaderName
 import io.amplicode.connekt.HeaderValue
@@ -13,158 +14,56 @@ import io.amplicode.connekt.MissingPathParameterException
 import io.amplicode.connekt.client.ClientConfigurer
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.internal.http.HttpMethod
-import java.io.File
-import java.util.*
 
 @DslMarker
 annotation class ConnektDsl
 
-abstract class RequestBuilder {
-    internal abstract fun build(): Request
+private fun buildHeaders(headers: List<Pair<String, Any>>) = Headers.Builder().apply {
+    headers.forEach {
+        add(it.first, it.second.toString())
+    }
+}.build()
 
-    internal val requestHints: RequestHints = RequestHints(
+private fun RequestBody.toOkHttpBody(contentType: MediaType? = null): okhttp3.RequestBody {
+    return when (this) {
+        is ByteArrayBody -> body.toRequestBody(contentType)
+        is FormDataBody -> FormBody.Builder()
+            .apply {
+                for ((name, value) in body) {
+                    add(name, value)
+                }
+            }
+            .build()
+
+        is StringBody -> body.toRequestBody(contentType)
+
+        is MultipartBody -> okhttp3.MultipartBody.Builder(boundary)
+            .apply {
+                setType(okhttp3.MultipartBody.FORM)
+                for (part in parts) {
+                    assert(part.body !is MultipartBody) { "Unable to use multipart as multipart part" }
+                    addPart(buildHeaders(part.headers), part.body.toOkHttpBody(part.contentType))
+                }
+            }
+            .build()
+    }
+}
+
+@ConnektDsl
+open class RequestBuilder(
+    private val method: String,
+    private val path: String,
+    private val context: ConnektContext?
+) {
+    // todo decompose
+    private val requestHints: RequestHints = RequestHints(
         noCookies = false,
         noRedirect = false,
         http2 = false
     )
-}
 
-data class RequestHints(
-    var noCookies: Boolean,
-    var noRedirect: Boolean,
-    var http2: Boolean
-)
-
-fun RequestHints.toClientConfigurer(): ClientConfigurer = {
-    if (!noCookies) {
-        cookieJar(object : CookieJar {
-            override fun loadForRequest(url: HttpUrl): List<Cookie> {
-                //todo
-                return listOf()
-            }
-
-            override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-                //todo
-            }
-        })
-    }
-
-    if (!noRedirect) {
-        followRedirects(true)
-        followSslRedirects(true)
-    }
-
-    if (http2) {
-        protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE))
-    }
-
-    this
-}
-
-@ConnektDsl
-class MultipartBodyBuilder(private val boundary: String) {
-    private val parts = mutableListOf<MultipartBody.Part>()
-
-    fun part(name: String? = null, contentType: String? = null, block: PartBuilder.() -> Unit) {
-        parts.add(PartBuilder(contentType).apply {
-            if (name != null) {
-                contentDisposition(args = listOf("name" to name))
-            }
-        }.apply(block).build())
-    }
-
-    fun file(name: String, fileName: String, file: File) {
-        part {
-            contentDisposition(args = listOf("name" to name, "filename" to fileName))
-            body(file.readBytes())
-        }
-    }
-
-    internal fun build(): MultipartBody = MultipartBody(parts, boundary)
-
-    @ConnektDsl
-    class PartBuilder(private val contentType: String? = null) {
-        private var body: RequestBody? = null
-            set(value) {
-                require(field == null) {
-                    "Body already set"
-                }
-
-                field = value
-            }
-        private val headers = mutableListOf<Pair<String, Any>>()
-
-        fun body(body: String) {
-            this.body = StringBody(body)
-        }
-
-        fun body(body: ByteArray) {
-            this.body = ByteArrayBody(body)
-        }
-
-        fun formDataBody(block: FormDataBodyBuilder.() -> Unit) {
-            this.body = FormDataBodyBuilder().apply(block).build()
-        }
-
-        fun header(name: String, value: Any) {
-            headers.add(name to value)
-        }
-
-        fun contentDisposition(value: String = "form-data", args: List<Pair<String, String>>) {
-            headers.removeIf { it.first == "Content-Disposition" }
-            header(
-                "Content-Disposition",
-                "$value; " + args.joinToString(separator = ";") { it.first + "=" + "\"" + it.second + "\"" })
-        }
-
-        internal fun build(): MultipartBody.Part {
-            val body = body
-            require(body != null) {
-                "Body is mandatory"
-            }
-            return MultipartBody.Part(body, headers, contentType?.toMediaType())
-        }
-    }
-}
-
-@ConnektDsl
-class FormDataBodyBuilder {
-    private val fields = mutableListOf<Pair<String, String>>()
-
-    fun field(name: String, value: Any) {
-        fields.add(name to value.toString())
-    }
-
-    internal fun build(): FormDataBody = FormDataBody(fields)
-}
-
-interface RequestBuilderExtensions {
-    fun BaseRequestBuilder.basicAuth(username: String, password: String) {
-        val token = Base64.getEncoder().encodeToString("$username:$password".toByteArray())
-        header("Authorization", "Basic $token")
-    }
-
-    fun BaseRequestBuilder.bearerAuth(token: String) {
-        header("Authorization", "Bearer $token")
-    }
-
-    fun BaseRequestBuilder.contentType(@HeaderValue("Content-Type") contentType: String) {
-        header("Content-Type", contentType)
-    }
-
-    fun BaseRequestBuilder.accept(@HeaderValue("Accept") contentType: String) {
-        header("Accept", contentType)
-    }
-}
-
-@ConnektDsl
-open class BaseRequestBuilder(
-    private val method: String,
-    private val path: String,
-) : RequestBuilder(), RequestBuilderExtensions {
     private var body: RequestBody? = null
         set(value) {
             require(field == null) {
@@ -172,6 +71,7 @@ open class BaseRequestBuilder(
             }
             field = value
         }
+
     private var headers = mutableListOf<Pair<String, Any>>()
     private val queryParamsMap = mutableMapOf<String, Any>()
     private val pathParamsMap = mutableMapOf<String, Any>()
@@ -239,7 +139,7 @@ open class BaseRequestBuilder(
         pathParamsMap[key] = value
     }
 
-    override fun build(): Request {
+    fun build(): Request {
         applyAdditionalHeaders()
         val requestBuilder = Request.Builder()
             .headers(buildHeaders(headers))
@@ -249,6 +149,12 @@ open class BaseRequestBuilder(
     }
 
     private fun applyAdditionalHeaders() {
+        if (!requestHints.noCookies) {
+            context?.cookies?.forEach<String, String> {
+                header("Cookie", it)
+            }
+        }
+
         val body = this.body
         when (body) {
             is FormDataBody -> header(
@@ -293,7 +199,7 @@ open class BaseRequestBuilder(
     private fun String.replacePathParams(): String {
         val pathParamPattern = Regex(
             """\{(\p{javaJavaIdentifierStart}[\p{javaJavaIdentifierPart}-]*)\}"""
-        );
+        )
         return replace(pathParamPattern) { matchResult ->
             val paramName = matchResult.groupValues[1]
             pathParamsMap.getOrElse(paramName) {
@@ -301,44 +207,47 @@ open class BaseRequestBuilder(
             }.toString()
         }
     }
-}
 
-class GetBuilder(path: String) : BaseRequestBuilder("GET", path)
-class PostBuilder(path: String) : BaseRequestBuilder("POST", path)
-class PutBuilder(path: String) : BaseRequestBuilder("PUT", path)
-class OptionsBuilder(path: String) : BaseRequestBuilder("OPTIONS", path)
-class PatchBuilder(path: String) : BaseRequestBuilder("PATCH", path)
-class DeleteBuilder(path: String) : BaseRequestBuilder("DELETE", path)
-class HeadBuilder(path: String) : BaseRequestBuilder("HEAD", path)
-class TraceBuilder(path: String) : BaseRequestBuilder("TRACE", path)
+    fun getClientConfigurer() = requestHints.toClientConfigurer()
 
-private fun buildHeaders(headers: List<Pair<String, Any>>) = Headers.Builder().apply {
-    headers.forEach {
-        add(it.first, it.second.toString())
-    }
-}.build()
+    data class RequestHints(
+        var noCookies: Boolean,
+        var noRedirect: Boolean,
+        var http2: Boolean
+    )
 
-private fun RequestBody.toOkHttpBody(contentType: MediaType? = null): okhttp3.RequestBody {
-    return when (this) {
-        is ByteArrayBody -> body.toRequestBody(contentType)
-        is FormDataBody -> FormBody.Builder()
-            .apply {
-                for ((name, value) in body) {
-                    add(name, value)
+    fun RequestHints.toClientConfigurer(): ClientConfigurer = {
+        if (!noCookies) {
+            cookieJar(object : CookieJar {
+                override fun loadForRequest(url: HttpUrl): List<Cookie> {
+                    //todo
+                    return listOf()
                 }
-            }
-            .build()
 
-        is StringBody -> body.toRequestBody(contentType)
-
-        is MultipartBody -> okhttp3.MultipartBody.Builder(boundary)
-            .apply {
-                setType(okhttp3.MultipartBody.FORM)
-                for (part in parts) {
-                    assert(part.body !is MultipartBody) { "Unable to use multipart as multipart part" }
-                    addPart(buildHeaders(part.headers), part.body.toOkHttpBody(part.contentType))
+                override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+                    //todo
                 }
-            }
-            .build()
+            })
+        }
+
+        if (!noRedirect) {
+            followRedirects(true)
+            followSslRedirects(true)
+        }
+
+        if (http2) {
+            protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE))
+        }
+
+        this
     }
 }
+
+class GetBuilder(path: String, context: ConnektContext) : RequestBuilder("GET", path, context)
+class PostBuilder(path: String, context: ConnektContext) : RequestBuilder("POST", path, context)
+class PutBuilder(path: String, context: ConnektContext) : RequestBuilder("PUT", path, context)
+class OptionsBuilder(path: String, context: ConnektContext) : RequestBuilder("OPTIONS", path, context)
+class PatchBuilder(path: String, context: ConnektContext) : RequestBuilder("PATCH", path, context)
+class DeleteBuilder(path: String, context: ConnektContext) : RequestBuilder("DELETE", path, context)
+class HeadBuilder(path: String, context: ConnektContext) : RequestBuilder("HEAD", path, context)
+class TraceBuilder(path: String, context: ConnektContext) : RequestBuilder("TRACE", path, context)

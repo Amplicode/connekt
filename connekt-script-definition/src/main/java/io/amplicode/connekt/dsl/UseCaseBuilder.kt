@@ -11,7 +11,7 @@ import io.amplicode.connekt.RequestPath
 import io.amplicode.connekt.RequestHolder
 import kotlin.reflect.KProperty
 
-class UseCaseBuilder(private val connektContext: ConnektContext) {
+class UseCaseBuilder(private val context: ConnektContext) {
     @RequestBuilderCall
     @Request("GET")
     @Suppress("FunctionName")
@@ -19,7 +19,7 @@ class UseCaseBuilder(private val connektContext: ConnektContext) {
         @RequestPath path: String,
         configure: GetBuilder.() -> Unit = {}
     ) = addRequest {
-        GetBuilder(path).apply(configure)
+        GetBuilder(path, context).apply(configure)
     }
 
     @RequestBuilderCall
@@ -29,7 +29,7 @@ class UseCaseBuilder(private val connektContext: ConnektContext) {
         @RequestPath path: String,
         configure: PostBuilder.() -> Unit = {}
     ) = addRequest {
-        PostBuilder(path).apply(configure)
+        PostBuilder(path, context).apply(configure)
     }
 
     @RequestBuilderCall
@@ -39,7 +39,7 @@ class UseCaseBuilder(private val connektContext: ConnektContext) {
         @RequestPath path: String,
         configure: PutBuilder.() -> Unit = {}
     ) = addRequest {
-        PutBuilder(path).apply(configure)
+        PutBuilder(path, context).apply(configure)
     }
 
     @RequestBuilderCall
@@ -49,7 +49,7 @@ class UseCaseBuilder(private val connektContext: ConnektContext) {
         @RequestPath path: String,
         configure: OptionsBuilder.() -> Unit = {}
     ) = addRequest {
-        OptionsBuilder(path).apply(configure)
+        OptionsBuilder(path, context).apply(configure)
     }
 
     @RequestBuilderCall
@@ -59,7 +59,7 @@ class UseCaseBuilder(private val connektContext: ConnektContext) {
         @RequestPath path: String,
         configure: PatchBuilder.() -> Unit = {}
     ) = addRequest {
-        PatchBuilder(path).apply(configure)
+        PatchBuilder(path, context).apply(configure)
     }
 
     @RequestBuilderCall
@@ -69,7 +69,7 @@ class UseCaseBuilder(private val connektContext: ConnektContext) {
         @RequestPath path: String,
         configure: DeleteBuilder.() -> Unit = {}
     ) = addRequest {
-        DeleteBuilder(path).apply(configure)
+        DeleteBuilder(path, context).apply(configure)
     }
 
     @RequestBuilderCall
@@ -79,7 +79,7 @@ class UseCaseBuilder(private val connektContext: ConnektContext) {
         @RequestPath path: String,
         configure: HeadBuilder.() -> Unit = {}
     ) = addRequest {
-        HeadBuilder(path).apply(configure)
+        HeadBuilder(path, context).apply(configure)
     }
 
     @RequestBuilderCall
@@ -89,7 +89,7 @@ class UseCaseBuilder(private val connektContext: ConnektContext) {
         @RequestPath path: String,
         configure: TraceBuilder.() -> Unit = {}
     ) = addRequest {
-        TraceBuilder(path).apply(configure)
+        TraceBuilder(path, context).apply(configure)
     }
 
     @RequestBuilderCall
@@ -97,14 +97,14 @@ class UseCaseBuilder(private val connektContext: ConnektContext) {
     fun request(
         method: String,
         @RequestPath path: String,
-        configure: BaseRequestBuilder.() -> Unit = {}
+        configure: RequestBuilder.() -> Unit = {}
     ) = addRequest {
-        BaseRequestBuilder(method, path).apply(configure)
+        RequestBuilder(method, path, context).apply(configure)
     }
 
-    private fun <T : BaseRequestBuilder> addRequest(requestBuilderSupplier: () -> T): RequestHolder {
+    private fun <T : RequestBuilder> addRequest(requestBuilderSupplier: () -> T): RequestHolder {
         val connektRequest = ConnektRequest(
-            connektContext,
+            context,
             requestBuilderSupplier
         )
         val requestHolder = RequestHolder(connektRequest)

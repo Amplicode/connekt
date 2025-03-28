@@ -1,8 +1,21 @@
 package io.amplicode.connekt
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.jayway.jsonpath.Configuration
+import com.jayway.jsonpath.JsonPath
+import com.jayway.jsonpath.ReadContext
+import com.jayway.jsonpath.TypeRef
+import com.jayway.jsonpath.spi.json.JacksonJsonProvider
+import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider
 import okhttp3.Response
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.util.WeakHashMap
+import kotlin.collections.set
 
 /**
+ * Provides controls to handle response data.
+ *
  * @param T execution result type
  */
 sealed class ConnektRequestHolder<T>() : Executable<T>() {
@@ -38,6 +51,9 @@ class RequestHolder(
         return connektRequest.execute()
     }
 
+    /**
+     * Provides controls to handle response
+     */
     infix fun <R> then(mapFunction: MapFunction<Response, R>): MappedRequestHolder<R> {
         val mappedRequestHolder = MappedRequestHolder(
             this,

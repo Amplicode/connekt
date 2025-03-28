@@ -12,7 +12,6 @@ import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.jvm.compilationCache
 import kotlin.script.experimental.jvm.jvm
-import kotlin.script.experimental.jvm.util.isError
 import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
 import kotlin.script.experimental.jvmhost.CompiledScriptJarsCache
 import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromTemplate
@@ -37,29 +36,18 @@ class Evaluator(
             )
         }
 
-    /**
-     * @param requestNumber request number starting from `0`
-     */
     fun evalScript(
         connektBuilder: ConnektBuilder,
-        scriptSourceCode: SourceCode,
-        requestNumber: Int?
+        scriptSourceCode: SourceCode
     ): ResultWithDiagnostics<EvaluationResult> {
         val scriptingHost = createScriptingHost()
-        val eval = scriptingHost.eval(
+        return scriptingHost.eval(
             scriptSourceCode,
             compilationConfiguration,
             ScriptEvaluationConfiguration {
                 implicitReceivers(connektBuilder)
             }
         )
-
-        if (eval.returnValueAsError != null || eval.isError()) {
-            return eval
-        }
-
-        RequestExecutor.execute(connektBuilder, requestNumber)
-        return eval
     }
 
     private fun createScriptingHost(): BasicJvmScriptingHost {

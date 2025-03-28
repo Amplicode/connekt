@@ -3,210 +3,114 @@
  * Use is subject to license terms.
  */
 
+@file:Suppress("FunctionName")
+
 package io.amplicode.connekt.dsl
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.jayway.jsonpath.Configuration
-import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.ReadContext
-import com.jayway.jsonpath.TypeRef
-import com.jayway.jsonpath.spi.json.JacksonJsonProvider
-import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider
 import io.amplicode.connekt.*
 import io.amplicode.connekt.client.ClientConfigurer
 import io.amplicode.connekt.console.println
 import okhttp3.Response
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.util.*
 import kotlin.reflect.KProperty
 
-class ConnektBuilder(
-    val connektContext: ConnektContext,
-    val requests: MutableList<Executable<*>> = mutableListOf()
-) {
-    val env = connektContext.env
-    val vars = connektContext.vars
+interface ConnektBuilder {
+    val env: EnvironmentStore
+    val vars: VariablesStore
 
-    @Suppress("unused")
-    fun <T> variable(): DelegateProvider<T> {
-        return DelegateProvider(connektContext.values)
-    }
+    fun <T> variable(): DelegateProvider<T>
+    fun configureClient(configure: ClientConfigurer)
 
-    fun configureClient(configure: ClientConfigurer) {
-        connektContext.globalClientConfigurer = configure
-    }
-
+    /**
+     * A base function for building request
+     * @param method an HTTP method
+     * @param path request URL
+     * @see GET
+     * @see POST
+     * @see OPTIONS
+     * @see PUT
+     * @see PATCH
+     * @see DELETE
+     * @see HEAD
+     * @see TRACE
+     */
     @RequestBuilderCall
-    @Request("GET")
-    @Suppress("FunctionName")
-    fun GET(
-        @RequestPath path: String,
-        configure: GetBuilder.() -> Unit = {}
-    ) = addRequest {
-        GetBuilder(path).apply(configure)
-    }
-
-    @RequestBuilderCall
-    @Request("POST")
-    @Suppress("FunctionName")
-    fun POST(
-        @RequestPath path: String,
-        configure: PostBuilder.() -> Unit = {}
-    ) = addRequest {
-        PostBuilder(path).apply(configure)
-    }
-
-    @RequestBuilderCall
-    @Request("PUT")
-    @Suppress("FunctionName")
-    fun PUT(
-        @RequestPath path: String,
-        configure: PutBuilder.() -> Unit = {}
-    ) = addRequest {
-        PutBuilder(path).apply(configure)
-    }
-
-    @RequestBuilderCall
-    @Request("OPTIONS")
-    @Suppress("FunctionName")
-    fun OPTIONS(
-        @RequestPath path: String,
-        configure: OptionsBuilder.() -> Unit = {}
-    ) = addRequest {
-        OptionsBuilder(path).apply(configure)
-    }
-
-    @RequestBuilderCall
-    @Request("PATCH")
-    @Suppress("FunctionName")
-    fun PATCH(
-        @RequestPath path: String,
-        configure: PatchBuilder.() -> Unit = {}
-    ) = addRequest {
-        PatchBuilder(path).apply(configure)
-    }
-
-    @RequestBuilderCall
-    @Request("DELETE")
-    @Suppress("FunctionName")
-    fun DELETE(
-        @RequestPath path: String,
-        configure: DeleteBuilder.() -> Unit = {}
-    ) = addRequest {
-        DeleteBuilder(path).apply(configure)
-    }
-
-    @RequestBuilderCall
-    @Request("HEAD")
-    @Suppress("FunctionName")
-    fun HEAD(
-        @RequestPath path: String,
-        configure: HeadBuilder.() -> Unit = {}
-    ) = addRequest {
-        HeadBuilder(path).apply(configure)
-    }
-
-    @RequestBuilderCall
-    @Request("TRACE")
-    @Suppress("FunctionName")
-    fun TRACE(
-        @RequestPath path: String,
-        configure: TraceBuilder.() -> Unit = {}
-    ) = addRequest {
-        TraceBuilder(path).apply(configure)
-    }
-
-    @RequestBuilderCall
-    @Suppress("unused")
     fun request(
         method: String,
         @RequestPath path: String,
-        configure: BaseRequestBuilder.() -> Unit = {}
-    ) = addRequest {
-        BaseRequestBuilder(method, path).apply(configure)
-    }
+        configure: RequestBuilder.() -> Unit = {}
+    ): RequestHolder
 
     @RequestBuilderCall
     fun useCase(
         name: String? = null,
         build: UseCaseBuilder.() -> Unit = {}
-    ) {
-        val useCaseBuilder = UseCaseBuilder(connektContext)
+    )
 
-        requests.add(
-            object : Executable<Unit>() {
-                override fun execute() {
-                    connektContext.printer.println("Running flow [${name}]")
-                    useCaseBuilder.build()
-                    useCaseBuilder.executeRequests()
-                }
-            }
-        )
-    }
-
-    private val jsonPaths: WeakHashMap<Response, ReadContext> = WeakHashMap()
-
-    fun Response.jsonPath(): ReadContext {
-        var readContext = jsonPaths[this]
-
-        if (readContext == null) {
-            val stream = ByteArrayOutputStream()
-            body?.source()?.buffer?.copyTo(stream)
-
-            readContext = JsonPath.parse(
-                ByteArrayInputStream(stream.toByteArray()),
-                Configuration.builder()
-                    .jsonProvider(JacksonJsonProvider(connektContext.objectMapper))
-                    .mappingProvider(JacksonMappingProvider(connektContext.objectMapper))
-                    .build()
-            )
-
-            jsonPaths[this] = readContext
-
-            return readContext
-        }
-
-        return readContext
-    }
-
-    fun ReadContext.readString(path: String): String {
-        return read(path)
-    }
-
-    fun ReadContext.readInt(path: String): Int {
-        return read(path)
-    }
-
-    fun ReadContext.readLong(path: String): Long {
-        return read(path)
-    }
-
-    fun <T> ReadContext.readList(path: String, clazz: Class<T>): List<T> {
-        val nodes: List<JsonNode> = read(path, object : TypeRef<List<JsonNode>>() {})
-        return nodes.map {
-            connektContext.objectMapper.treeToValue(it, clazz)
-        }
-    }
-
-    private fun <T : BaseRequestBuilder> addRequest(requestBuilderSupplier: () -> T): RequestHolder {
-        val connektRequest = ConnektRequest(
-            connektContext,
-            requestBuilderSupplier
-        )
-        val thenable = RequestHolder(connektRequest)
-        requests.add(thenable)
-        return thenable
-    }
+    fun Response.jsonPath(): ReadContext
 
     operator fun <R> ConnektRequestHolder<R>.provideDelegate(
         @Suppress("unused")
         receiver: Any?,
         prop: KProperty<*>
-    ): PersistentRequestDelegate<R> {
-        return PersistentRequestDelegate(connektContext, this, prop.name)
-    }
+    ): PersistentRequestDelegate<R>
 }
+
+@RequestBuilderCall
+@Request("OPTIONS")
+fun ConnektBuilder.OPTIONS(
+    @RequestPath path: String,
+    configure: RequestBuilder.() -> Unit = {}
+) = request("OPTIONS", path, configure)
+
+@RequestBuilderCall
+@Request("POST")
+fun ConnektBuilder.POST(
+    @RequestPath path: String,
+    configure: RequestBuilder.() -> Unit = {}
+) = request("POST", path, configure)
+
+@RequestBuilderCall
+@Request("GET")
+fun ConnektBuilder.GET(
+    @RequestPath path: String,
+    configure: RequestBuilder.() -> Unit = {}
+) = request("GET", path, configure)
+
+@RequestBuilderCall
+@Request("PUT")
+fun ConnektBuilder.PUT(
+    @RequestPath path: String,
+    configure: RequestBuilder.() -> Unit = {}
+) = request("PUT", path, configure)
+
+@RequestBuilderCall
+@Request("PATCH")
+fun ConnektBuilder.PATCH(
+    @RequestPath path: String,
+    configure: RequestBuilder.() -> Unit = {}
+) = request("PATCH", path, configure)
+
+@RequestBuilderCall
+@Request("DELETE")
+fun ConnektBuilder.DELETE(
+    @RequestPath path: String,
+    configure: RequestBuilder.() -> Unit = {}
+) = request("DELETE", path, configure)
+
+@RequestBuilderCall
+@Request("HEAD")
+fun ConnektBuilder.HEAD(
+    @RequestPath path: String,
+    configure: RequestBuilder.() -> Unit = {}
+) = request("HEAD", path, configure)
+
+@RequestBuilderCall
+@Request("TRACE")
+fun ConnektBuilder.TRACE(
+    @RequestPath path: String,
+    configure: RequestBuilder.() -> Unit = {}
+) = request("TRACE", path, configure)
 
 class PersistentRequestDelegate<T>(
     private val connektContext: ConnektContext,

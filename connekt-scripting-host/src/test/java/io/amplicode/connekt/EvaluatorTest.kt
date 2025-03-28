@@ -1,6 +1,5 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.dsl.ConnektBuilder
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.response.*
@@ -131,15 +130,14 @@ class EvaluatorTest {
         requestNumber: Int? = null
     ): ResultWithDiagnostics<EvaluationResult> {
         val db = DBMaker.memoryDB().make()
-        val connektContext = ConnektContext(
+        val context = ConnektContext(
             db,
             NoOpEnvironmentStore,
             VariablesStore(db)
         )
-        val connektBuilder = ConnektBuilder(connektContext)
-        val evaluator = Evaluator(false)
-        return evaluator.evalScript(
-            connektBuilder,
+        return runScript(
+            context,
+            Evaluator(false),
             StringScriptSource(scriptText),
             requestNumber
         )
