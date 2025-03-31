@@ -6,12 +6,12 @@
 package io.amplicode.connekt.dsl
 
 import io.amplicode.connekt.Body
-import io.amplicode.connekt.ConnektContext
+import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.Header
 import io.amplicode.connekt.HeaderName
 import io.amplicode.connekt.HeaderValue
 import io.amplicode.connekt.MissingPathParameterException
-import io.amplicode.connekt.client.ClientConfigurer
+import io.amplicode.connekt.context.ClientConfigurer
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -150,9 +150,11 @@ open class RequestBuilder(
 
     private fun applyAdditionalHeaders() {
         if (!requestHints.noCookies) {
-            context?.cookies?.forEach<String, String> {
-                header("Cookie", it)
-            }
+            context?.cookiesContext
+                ?.cookies
+                ?.forEach<String, String> {
+                    header("Cookie", it)
+                }
         }
 
         val body = this.body

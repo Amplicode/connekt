@@ -1,22 +1,16 @@
 package io.amplicode.connekt
 
 import com.fasterxml.jackson.databind.JsonNode
-import com.jayway.jsonpath.Configuration
-import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.ReadContext
 import com.jayway.jsonpath.TypeRef
-import com.jayway.jsonpath.spi.json.JacksonJsonProvider
-import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider
-import io.amplicode.connekt.client.ClientConfigurer
-import io.amplicode.connekt.console.println
+import io.amplicode.connekt.context.ClientConfigurer
+import io.amplicode.connekt.context.ConnektContext
+import io.amplicode.connekt.context.DelegateProvider
 import io.amplicode.connekt.dsl.ConnektBuilder
-import io.amplicode.connekt.dsl.PersistentRequestDelegate
 import io.amplicode.connekt.dsl.RequestBuilder
+import io.amplicode.connekt.dsl.RequestDelegate
 import io.amplicode.connekt.dsl.UseCaseBuilder
 import okhttp3.Response
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.util.WeakHashMap
 import kotlin.reflect.KProperty
 
 fun ConnektBuilder(context: ConnektContext): ConnektBuilder = ConnektBuilderImpl(context)
@@ -28,11 +22,11 @@ internal class ConnektBuilderImpl(
     override val vars = context.vars
 
     override fun <T> variable(): DelegateProvider<T> {
-        return DelegateProvider(context.values)
+        return DelegateProvider(context.responseValuesContext.values)
     }
 
     override fun configureClient(configure: ClientConfigurer) {
-        context.globalClientConfigurer = configure
+        context.clientContext.globalConfigurer = configure
     }
 
     @RequestBuilderCall
@@ -42,7 +36,7 @@ internal class ConnektBuilderImpl(
     ) {
         val useCaseBuilder = UseCaseBuilder(context)
 
-        context.addRequest(
+        context.requestsContext.addRequest(
             object : Executable<Unit>() {
                 override fun execute() {
                     context.printer.println("Running flow [${name}]")
@@ -53,47 +47,14 @@ internal class ConnektBuilderImpl(
         )
     }
 
-    private val jsonPaths: WeakHashMap<Response, ReadContext> = WeakHashMap()
-
     override fun Response.jsonPath(): ReadContext {
-        var readContext = jsonPaths[this]
-
-        if (readContext == null) {
-            val stream = ByteArrayOutputStream()
-            body?.source()?.buffer?.copyTo(stream)
-
-            readContext = JsonPath.parse(
-                ByteArrayInputStream(stream.toByteArray()),
-                Configuration.builder()
-                    .jsonProvider(JacksonJsonProvider(context.objectMapper))
-                    .mappingProvider(JacksonMappingProvider(context.objectMapper))
-                    .build()
-            )
-
-            jsonPaths[this] = readContext
-
-            return readContext
-        }
-
-        return readContext
+        return context.jsonContext.getReadContext(this)
     }
 
-    fun ReadContext.readString(path: String): String {
-        return read(path)
-    }
-
-    fun ReadContext.readInt(path: String): Int {
-        return read(path)
-    }
-
-    fun ReadContext.readLong(path: String): Long {
-        return read(path)
-    }
-
-    fun <T> ReadContext.readList(path: String, clazz: Class<T>): List<T> {
+    override fun <T> ReadContext.readList(path: String, clazz: Class<T>): List<T> {
         val nodes: List<JsonNode> = read(path, object : TypeRef<List<JsonNode>>() {})
         return nodes.map {
-            context.objectMapper.treeToValue(it, clazz)
+            context.jsonContext.objectMapper.treeToValue(it, clazz)
         }
     }
 
@@ -106,7 +67,7 @@ internal class ConnektBuilderImpl(
             RequestBuilder(method, path, context).apply(configure)
         }
         val thenable = RequestHolder(connektRequest)
-        context.addRequest(thenable)
+        context.requestsContext.addRequest(thenable)
         return thenable
     }
 
@@ -114,7 +75,46 @@ internal class ConnektBuilderImpl(
         @Suppress("unused")
         receiver: Any?,
         prop: KProperty<*>
-    ): PersistentRequestDelegate<R> {
-        return PersistentRequestDelegate(context, this, prop.name)
+    ): RequestDelegate<R> = PersistentRequestDelegate(
+        context,
+        this,
+        prop.name
+    )
+}
+
+class PersistentRequestDelegate<T>(
+    private val connektContext: ConnektContext,
+    private val requestHolder: ConnektRequestHolder<T>,
+    private val storageKey: String
+) : RequestDelegate<T> {
+
+    init {
+        requestHolder.onResultObtained {
+            connektContext.responseValuesContext.values[storageKey] = it
+        }
+    }
+
+    override operator fun getValue(
+        @Suppress("unused") thisRef: Nothing?,
+        @Suppress("unused") property: KProperty<*>
+    ): T {
+        return getValueImpl()
+    }
+
+    override operator fun getValue(
+        @Suppress("unused") receiver: Any?,
+        @Suppress("unused") prop: KProperty<*>
+    ): T {
+        return getValueImpl()
+    }
+
+    private fun getValueImpl(): T {
+        val storedValue = connektContext.responseValuesContext.values[storageKey]
+        if (storedValue == null) {
+            connektContext.printer.println("Initializing value for property `$storageKey`")
+            return requestHolder.execute()
+        }
+
+        return connektContext.responseValuesContext.values[storageKey] as T
     }
 }

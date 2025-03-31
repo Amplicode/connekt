@@ -100,25 +100,27 @@ fun Application.module() {
 }
 
 private fun Routing.jsonApi() {
-    get("one-line-json-object") {
-        call.respondText(
-            //language=json
-            """{"foo": "f", "bar": "b", "baz": 3}""",
-            contentType = ContentType.Application.Json
-        )
-    }
-    get("one-line-json-array") {
-        call.respondText(
-            //language=json
-            """[1,2,3]""",
-            contentType = ContentType.Application.Json
-        )
-    }
-    get("invalid-json-object") {
-        call.respondText(
-            "foo bar",
-            contentType = ContentType.Application.Json
-        )
+    route("/json") {
+        get("one-line-object") {
+            call.respondText(
+                //language=json
+                """{"foo": "f", "bar": "b", "baz": 3}""",
+                contentType = ContentType.Application.Json
+            )
+        }
+        get("one-line-array") {
+            call.respondText(
+                //language=json
+                """[1,2,3]""",
+                contentType = ContentType.Application.Json
+            )
+        }
+        get("invalid-object") {
+            call.respondText(
+                "foo bar",
+                contentType = ContentType.Application.Json
+            )
+        }
     }
 }
 

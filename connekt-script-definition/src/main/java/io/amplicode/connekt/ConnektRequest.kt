@@ -5,6 +5,7 @@
 
 package io.amplicode.connekt
 
+import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.dsl.RequestBuilder
 import okhttp3.Response
 
@@ -16,7 +17,7 @@ class ConnektRequest(
         val requestBuilder = requestBuilderSupplier()
         val request = requestBuilder.build()
         val clientConfigurer = requestBuilder.getClientConfigurer()
-        val client = context.getClient(clientConfigurer)
+        val client = context.clientContext.getClient(clientConfigurer)
         val response: Response = client
             .newCall(request)
             .execute()

@@ -1,7 +1,7 @@
-package io.amplicode.connekt.console
+package io.amplicode.connekt
 
-import io.amplicode.connekt.console.Printer.Color
-import io.amplicode.connekt.console.Printer.Companion.RESET_COLOR
+import io.amplicode.connekt.Printer.Color
+import io.amplicode.connekt.Printer.Companion.RESET_COLOR
 
 interface Printer {
 

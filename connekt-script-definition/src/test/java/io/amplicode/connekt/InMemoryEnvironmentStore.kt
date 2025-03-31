@@ -1,5 +1,6 @@
 package io.amplicode.connekt
 
+import io.amplicode.connekt.context.EnvironmentStore
 import kotlin.reflect.KProperty
 
 class InMemoryEnvironmentStore : EnvironmentStore {

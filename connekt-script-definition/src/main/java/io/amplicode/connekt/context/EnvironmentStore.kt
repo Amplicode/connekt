@@ -3,7 +3,7 @@
  * Use is subject to license terms.
  */
 
-package io.amplicode.connekt
+package io.amplicode.connekt.context
 
 
 import com.fasterxml.jackson.databind.JsonNode

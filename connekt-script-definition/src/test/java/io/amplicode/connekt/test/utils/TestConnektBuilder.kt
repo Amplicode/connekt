@@ -1,32 +1,16 @@
 package io.amplicode.connekt.test.utils
 
-import io.amplicode.connekt.ConnektBuilder
-import io.amplicode.connekt.ConnektContext
-import io.amplicode.connekt.EnvironmentStore
-import io.amplicode.connekt.NoOpEnvironmentStore
-import io.amplicode.connekt.VariablesStore
-import io.amplicode.connekt.console.BaseNonColorPrinter
-import io.amplicode.connekt.console.Printer
-import io.amplicode.connekt.console.SystemOutPrinter
-import io.amplicode.connekt.ConnektBuilderImpl
-import io.amplicode.connekt.dsl.ConnektBuilder
+import io.amplicode.connekt.context.ConnektContext
+import io.amplicode.connekt.context.EnvironmentStore
+import io.amplicode.connekt.context.NoOpEnvironmentStore
+import io.amplicode.connekt.context.VariablesStore
+import io.amplicode.connekt.BaseNonColorPrinter
+import io.amplicode.connekt.Printer
+import io.amplicode.connekt.SystemOutPrinter
 import org.mapdb.DB
 import org.mapdb.DBMaker
 
-fun createConnektBuilder(
-    db: DB = DBMaker.memoryDB().make(),
-    environmentStore: EnvironmentStore = NoOpEnvironmentStore,
-): ConnektBuilder {
-    val connektContext = ConnektContext(
-        db,
-        environmentStore,
-        VariablesStore(db),
-        TestPrinter()
-    )
-    val connektBuilder = ConnektBuilder(connektContext)
-    return connektBuilder
-}
-
+@Suppress("TestFunctionName")
 fun ConnektContext(
     db: DB = DBMaker.memoryDB().make(),
     environmentStore: EnvironmentStore = NoOpEnvironmentStore

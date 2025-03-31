@@ -1,16 +1,20 @@
-package io.amplicode.connekt.client
+package io.amplicode.connekt.context
 
 import io.amplicode.connekt.CallLogger
-import io.amplicode.connekt.console.Printer
+import io.amplicode.connekt.Printer
 import okhttp3.OkHttpClient
 import java.io.Closeable
 import java.util.concurrent.TimeUnit
 
-interface ClientFactory : Closeable {
+interface ClientContext : Closeable {
     fun getClient(configure: ClientConfigurer): OkHttpClient
+    var globalConfigurer: ClientConfigurer
 }
 
-class ClientFactoryImpl(printer: Printer) : ClientFactory {
+class ClientContextImpl(
+    printer: Printer,
+    override var globalConfigurer: ClientConfigurer = NoopClientConfigurer
+) : ClientContext {
 
     private val clients = mutableSetOf<OkHttpClient>()
 
@@ -22,7 +26,9 @@ class ClientFactoryImpl(printer: Printer) : ClientFactory {
 
     override fun getClient(configure: ClientConfigurer): OkHttpClient {
         val client = defaultClient.newBuilder()
-        return client.configure().buildAndRegister()
+        return client.globalConfigurer()
+            .configure()
+            .buildAndRegister()
     }
 
     override fun close() {

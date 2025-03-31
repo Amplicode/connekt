@@ -1,6 +1,6 @@
 package io.amplicode.connekt.dsl
 
-import io.amplicode.connekt.ConnektContext
+import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.ConnektRequest
 import io.amplicode.connekt.ConnektRequestHolder
 import io.amplicode.connekt.Executable
@@ -116,7 +116,7 @@ class UseCaseBuilder(private val context: ConnektContext) {
         @Suppress("unused") receiver: Any?,
         @Suppress("unused") prop: KProperty<*>
     ): RequestDelegate<R> {
-        return RequestDelegate(this)
+        return UseCaseRequestDelegate(this)
     }
 
     private val requestsQueue =
@@ -129,15 +129,15 @@ class UseCaseBuilder(private val context: ConnektContext) {
     }
 }
 
-class RequestDelegate<T>(private val requestHolder: ConnektRequestHolder<T>) {
-    operator fun getValue(
+class UseCaseRequestDelegate<T>(private val requestHolder: ConnektRequestHolder<T>) : RequestDelegate<T> {
+    override operator fun getValue(
         @Suppress("unused") thisRef: Nothing?,
         @Suppress("unused") property: KProperty<*>
     ): T {
         return getValueImpl()
     }
 
-    operator fun getValue(
+    override operator fun getValue(
         @Suppress("unused") receiver: Any?,
         @Suppress("unused") prop: KProperty<*>
     ): T {

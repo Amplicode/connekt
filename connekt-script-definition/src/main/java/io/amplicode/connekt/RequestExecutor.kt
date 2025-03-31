@@ -1,6 +1,6 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.dsl.ConnektBuilder
+import io.amplicode.connekt.context.ConnektContext
 
 // TODO make non-singleton and move into ConnektContext?
 object RequestExecutor {
@@ -16,10 +16,10 @@ object RequestExecutor {
     fun execute(context: ConnektContext, requestNumber: Int?) {
         context.use {
             if (requestNumber != null) {
-                val request = context.requests[requestNumber]
+                val request = context.requestsContext.requests[requestNumber]
                 execute(request)
             } else {
-                context.requests.forEach { execute(it) }
+                context.requestsContext.requests.forEach { execute(it) }
             }
         }
     }

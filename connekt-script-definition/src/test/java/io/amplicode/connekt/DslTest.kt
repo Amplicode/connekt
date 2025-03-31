@@ -6,6 +6,7 @@
 
 package io.amplicode.connekt
 
+import io.amplicode.connekt.context.VariablesStore
 import io.amplicode.connekt.dsl.*
 import io.amplicode.connekt.test.utils.ConnektContext
 import io.amplicode.connekt.test.utils.TestServer

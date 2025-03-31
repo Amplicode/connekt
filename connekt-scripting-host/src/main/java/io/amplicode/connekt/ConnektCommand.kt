@@ -13,6 +13,11 @@ import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
+import io.amplicode.connekt.context.ConnektContext
+import io.amplicode.connekt.context.EnvironmentStore
+import io.amplicode.connekt.context.FileEnvironmentStore
+import io.amplicode.connekt.context.NoOpEnvironmentStore
+import io.amplicode.connekt.context.VariablesStore
 import org.mapdb.DBMaker
 import java.io.File
 import java.nio.file.Paths

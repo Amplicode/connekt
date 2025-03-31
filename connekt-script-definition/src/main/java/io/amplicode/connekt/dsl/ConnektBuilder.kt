@@ -9,8 +9,10 @@ package io.amplicode.connekt.dsl
 
 import com.jayway.jsonpath.ReadContext
 import io.amplicode.connekt.*
-import io.amplicode.connekt.client.ClientConfigurer
-import io.amplicode.connekt.console.println
+import io.amplicode.connekt.context.ClientConfigurer
+import io.amplicode.connekt.context.DelegateProvider
+import io.amplicode.connekt.context.EnvironmentStore
+import io.amplicode.connekt.context.VariablesStore
 import okhttp3.Response
 import kotlin.reflect.KProperty
 
@@ -49,11 +51,13 @@ interface ConnektBuilder {
 
     fun Response.jsonPath(): ReadContext
 
+    fun <T> ReadContext.readList(path: String, clazz: Class<T>): List<T>
+
     operator fun <R> ConnektRequestHolder<R>.provideDelegate(
         @Suppress("unused")
         receiver: Any?,
         prop: KProperty<*>
-    ): PersistentRequestDelegate<R>
+    ): RequestDelegate<R>
 }
 
 @RequestBuilderCall
@@ -112,39 +116,14 @@ fun ConnektBuilder.TRACE(
     configure: RequestBuilder.() -> Unit = {}
 ) = request("TRACE", path, configure)
 
-class PersistentRequestDelegate<T>(
-    private val connektContext: ConnektContext,
-    private val requestHolder: ConnektRequestHolder<T>,
-    private val storageKey: String
-) {
-
-    init {
-        requestHolder.onResultObtained {
-            connektContext.values[storageKey] = it
-        }
-    }
-
+interface RequestDelegate<T> {
     operator fun getValue(
         @Suppress("unused") thisRef: Nothing?,
         @Suppress("unused") property: KProperty<*>
-    ): T {
-        return getValueImpl()
-    }
+    ): T
 
     operator fun getValue(
         @Suppress("unused") receiver: Any?,
         @Suppress("unused") prop: KProperty<*>
-    ): T {
-        return getValueImpl()
-    }
-
-    private fun getValueImpl(): T {
-        val storedValue = connektContext.values[storageKey]
-        if (storedValue == null) {
-            connektContext.printer.println("Initializing value for property `$storageKey`")
-            return requestHolder.execute()
-        }
-
-        return connektContext.values[storageKey] as T
-    }
+    ): T
 }

@@ -2,7 +2,7 @@ package io.amplicode.connekt.test.utils
 
 import io.amplicode.connekt.ConnektBuilder
 import io.amplicode.connekt.RequestExecutor
-import io.amplicode.connekt.ConnektContext
+import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.dsl.ConnektBuilder
 
 /**

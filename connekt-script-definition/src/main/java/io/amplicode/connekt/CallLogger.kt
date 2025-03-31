@@ -1,9 +1,7 @@
 package io.amplicode.connekt
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import io.amplicode.connekt.console.Printer
-import io.amplicode.connekt.console.Printer.Color.*
-import io.amplicode.connekt.console.println
+import io.amplicode.connekt.Printer.Color.*
 import okhttp3.*
 import okhttp3.Request
 import okio.Buffer
