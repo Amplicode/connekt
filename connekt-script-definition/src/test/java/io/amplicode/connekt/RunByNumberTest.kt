@@ -1,7 +1,7 @@
 package io.amplicode.connekt
 
 import io.amplicode.connekt.dsl.GET
-import io.amplicode.connekt.test.utils.TestServer
+import io.amplicode.connekt.test.utils.server.TestServer
 import io.amplicode.connekt.test.utils.runScript
 import okhttp3.Response
 import org.junit.jupiter.api.Test
@@ -29,10 +29,12 @@ class RunByNumberTest(server: TestServer) : TestWithServer(server) {
 
         runScript(1) {
             // 0
+            @Suppress("UnusedVariable")
             val echo0 by GET("$host/echo-text") {
                 queryParam("text", 0)
 
                 // 0_1
+                @Suppress("UnusedVariable")
                 val echo0_1 by GET("$host/echo-text") {
                     queryParam("text", "0_1")
                 }.then(Response::registerResponse)

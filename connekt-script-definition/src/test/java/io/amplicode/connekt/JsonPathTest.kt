@@ -1,12 +1,7 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.dsl.GET
-import io.amplicode.connekt.dsl.POST
-import io.amplicode.connekt.dsl.contentType
-import io.amplicode.connekt.dsl.readBoolean
-import io.amplicode.connekt.dsl.readInt
-import io.amplicode.connekt.dsl.readString
-import io.amplicode.connekt.test.utils.TestServer
+import io.amplicode.connekt.dsl.*
+import io.amplicode.connekt.test.utils.server.TestServer
 import io.amplicode.connekt.test.utils.runScript
 import kotlin.test.Test
 import kotlin.test.assertEquals

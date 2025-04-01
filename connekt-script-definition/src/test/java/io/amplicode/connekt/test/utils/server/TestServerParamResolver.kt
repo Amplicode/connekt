@@ -1,4 +1,4 @@
-package io.amplicode.connekt.test.utils
+package io.amplicode.connekt.test.utils.server
 
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace

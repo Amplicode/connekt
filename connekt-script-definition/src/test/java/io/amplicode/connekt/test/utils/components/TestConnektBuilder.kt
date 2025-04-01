@@ -1,4 +1,4 @@
-package io.amplicode.connekt.test.utils
+package io.amplicode.connekt.test.utils.components
 
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.context.EnvironmentStore
@@ -10,8 +10,7 @@ import io.amplicode.connekt.SystemOutPrinter
 import org.mapdb.DB
 import org.mapdb.DBMaker
 
-@Suppress("TestFunctionName")
-fun ConnektContext(
+fun testConnektContext(
     db: DB = DBMaker.memoryDB().make(),
     environmentStore: EnvironmentStore = NoOpEnvironmentStore
 ): ConnektContext = ConnektContext(

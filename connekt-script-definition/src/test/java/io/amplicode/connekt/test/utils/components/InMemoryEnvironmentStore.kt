@@ -1,4 +1,4 @@
-package io.amplicode.connekt
+package io.amplicode.connekt.test.utils.components
 
 import io.amplicode.connekt.context.EnvironmentStore
 import kotlin.reflect.KProperty

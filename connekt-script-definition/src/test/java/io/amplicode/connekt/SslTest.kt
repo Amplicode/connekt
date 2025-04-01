@@ -3,8 +3,8 @@ package io.amplicode.connekt
 import io.amplicode.connekt.dsl.GET
 import io.amplicode.connekt.dsl.applyCertificate
 import io.amplicode.connekt.dsl.applyKeyStore
-import io.amplicode.connekt.test.utils.ServerSslParams
-import io.amplicode.connekt.test.utils.TestServer
+import io.amplicode.connekt.test.utils.server.ServerSslParams
+import io.amplicode.connekt.test.utils.server.TestServer
 import io.amplicode.connekt.test.utils.asUnit
 import io.amplicode.connekt.test.utils.runScript
 import org.junit.jupiter.api.Test

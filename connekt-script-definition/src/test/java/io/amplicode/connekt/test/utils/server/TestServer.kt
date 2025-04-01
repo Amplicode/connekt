@@ -1,4 +1,4 @@
-package io.amplicode.connekt.test.utils
+package io.amplicode.connekt.test.utils.server
 
 import io.ktor.http.ContentType
 import io.ktor.network.tls.certificates.buildKeyStore
@@ -38,7 +38,6 @@ import java.security.PrivateKey
 import java.security.cert.Certificate
 import java.security.spec.PKCS8EncodedKeySpec
 import kotlinx.coroutines.runBlocking
-import okhttp3.internal.wait
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
 
