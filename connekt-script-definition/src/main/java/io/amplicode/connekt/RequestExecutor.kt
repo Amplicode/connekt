@@ -14,12 +14,19 @@ object RequestExecutor {
     }
 
     fun execute(context: ConnektContext, requestNumber: Int?) {
-        context.use {
-            if (requestNumber != null) {
-                val request = context.requestsContext.requests[requestNumber]
+        val requests = context.requestsContext.requests
+        when {
+            requestNumber == null -> requests.forEach { execute(it) }
+            requestNumber >= 0 -> {
+                require(requestNumber in requests.indices) {
+                    "Invalid request number: should be in range [0 .. ${requests.lastIndex}], got '$requestNumber'"
+                }
+                val request = requests[requestNumber]
                 execute(request)
-            } else {
-                context.requestsContext.requests.forEach { execute(it) }
+            }
+
+            else -> {
+                // Negative request number, do nothing
             }
         }
     }

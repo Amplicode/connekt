@@ -139,12 +139,14 @@ class EvaluatorTest {
             NoOpEnvironmentStore,
             VariablesStore(db)
         )
-        return runScript(
-            context,
-            Evaluator(false),
-            StringScriptSource(scriptText),
-            requestNumber
-        )
+        context.use {
+            return runScript(
+                context,
+                StringScriptSource(scriptText),
+                requestNumber,
+                false
+            )
+        }
     }
 
     private fun evaluateThrowing(

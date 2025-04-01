@@ -5,28 +5,13 @@
 
 package io.amplicode.connekt
 
-import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.parameters.options.default
-import com.github.ajalt.clikt.parameters.options.defaultLazy
-import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.options.required
-import com.github.ajalt.clikt.parameters.types.boolean
-import com.github.ajalt.clikt.parameters.types.file
-import com.github.ajalt.clikt.parameters.types.int
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.context.EnvironmentStore
 import io.amplicode.connekt.context.FileEnvironmentStore
 import io.amplicode.connekt.context.NoOpEnvironmentStore
 import io.amplicode.connekt.context.VariablesStore
 import org.mapdb.DBMaker
-import java.io.File
-import java.nio.file.Paths
-import kotlin.script.experimental.api.EvaluationResult
-import kotlin.script.experimental.api.ResultWithDiagnostics
-import kotlin.script.experimental.api.ScriptDiagnostic
-import kotlin.script.experimental.api.SourceCode
 import kotlin.script.experimental.host.FileScriptSource
-import kotlin.script.experimental.jvm.util.isError
 
 internal class ConnektCommand : AbstractConnektCommand() {
 
@@ -49,9 +34,9 @@ internal class ConnektCommand : AbstractConnektCommand() {
         context.use { context ->
             runScript(
                 context,
-                Evaluator(useCompilationCache),
                 FileScriptSource(script),
-                requestNumber
+                requestNumber?.minus(1),
+                useCompilationCache
             )
         }
     }
@@ -61,71 +46,5 @@ internal class ConnektCommand : AbstractConnektCommand() {
         return if (envFile.exists() && !envName.isNullOrBlank())
             FileEnvironmentStore(envFile, envName) else
             NoOpEnvironmentStore
-    }
-}
-
-fun runScript(
-    context: ConnektContext,
-    evaluator: Evaluator,
-    scriptSourceCode: SourceCode,
-    requestNumber: Int?
-): ResultWithDiagnostics<EvaluationResult> {
-    val connektBuilder = ConnektBuilder(context)
-
-    val result = evaluator.evalScript(
-        connektBuilder,
-        scriptSourceCode
-    )
-
-    if (result.returnValueAsError == null && !result.isError()) {
-        RequestExecutor.execute(context, requestNumber)
-    }
-
-    result.returnValueAsError
-        ?.error
-        ?.printStackTrace()
-
-    result.reports.forEach {
-        it.exception?.printStackTrace()
-        if (it.severity > ScriptDiagnostic.Severity.DEBUG) {
-            println(" : ${it.message}" + if (it.exception == null) "" else ": ${it.exception}")
-        }
-    }
-
-    return result
-}
-
-abstract class AbstractConnektCommand : CliktCommand("Connekt") {
-    val script by option(help = "Script file path")
-        .file(mustExist = true, canBeDir = false, mustBeReadable = true)
-        .required()
-
-    val requestNumber by option(help = "Request number")
-        .int()
-
-    val envFile by option(help = "Environment file")
-        .file(mustExist = true, canBeDir = false, mustBeReadable = true)
-        .defaultLazy {
-            script.parentFile.resolve("connekt.env.json")
-        }
-
-    val globalEnvFile by option(help = "Environment global file")
-        .file(mustExist = false, canBeDir = false, mustBeReadable = true)
-        .defaultLazy {
-            globalEnvDefaultFile()
-        }
-
-    val envName by option(help = "Environment name")
-
-    val useCompilationCache by option(help = "Use compilation cache")
-        .boolean()
-        .default(true)
-
-    private fun globalEnvDefaultFile(): File {
-        val userHome = System.getProperty("user.home")
-        return Paths.get(userHome)
-            .resolve(".connekt")
-            .resolve("connekt-global-env.db")
-            .toFile()
     }
 }
