@@ -2,6 +2,9 @@ package io.amplicode.connekt.test.utils.server
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlin.time.Duration
 
 
@@ -23,21 +26,27 @@ private fun printServerParams(
     testServer: TestServer,
     sslParams: ServerSslParams
 ) {
-    val serverParams = sequence {
-        with(testServer) {
-            yield("HTTP host" to host)
-            yield("HTTPS host" to hostHttps)
-        }
-
-        with(sslParams) {
-            yield("JKS" to keyStoreFile.absolutePath)
-            yield("JKS pass" to keystorePass)
-            yield("PEM" to certPemFile.absolutePath)
-        }
-    }
+    val infoAsJson = json.encodeToString(
+        ServerInfo(
+            host = testServer.host,
+            hostHttps = testServer.host,
+            cert = sslParams.certPemFile.absolutePath,
+            keystore = sslParams.keyStoreFile.absolutePath,
+            keystorePass = sslParams.keystorePass
+        )
+    )
 
     println("Server Params")
-    serverParams.forEach { (param, value) ->
-        println("  $param: $value")
-    }
+    println(infoAsJson)
 }
+
+private val json = Json { prettyPrint = true }
+
+@Serializable
+data class ServerInfo(
+    val host: String,
+    val hostHttps: String,
+    val cert: String,
+    val keystorePass: String,
+    val keystore: String
+)

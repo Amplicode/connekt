@@ -1,10 +1,11 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-@Suppress("PropertyName")
-val ktor_version: String by project
+val ktorVersion: String by project
 
 plugins {
-    kotlin("jvm") version "2.0.21"
+    val kotlinVersion = "2.0.21"
+    kotlin("jvm") version kotlinVersion
+    kotlin("plugin.serialization") version kotlinVersion
 }
 
 dependencies {
@@ -23,13 +24,13 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.1")
     api("org.mapdb:mapdb:3.1.0")
-
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
     testImplementation(kotlin("test"))
-    testImplementation("io.ktor:ktor-server-core-jvm:$ktor_version")
-    testImplementation("io.ktor:ktor-server-netty-jvm:$ktor_version")
-    testImplementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
-    testImplementation("io.ktor:ktor-serialization-kotlinx-json:$ktor_version")
-    testImplementation("io.ktor:ktor-network-tls-certificates:$ktor_version")
+    testImplementation("io.ktor:ktor-server-core-jvm:$ktorVersion")
+    testImplementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")
+    testImplementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
+    testImplementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+    testImplementation("io.ktor:ktor-network-tls-certificates:$ktorVersion")
     testImplementation("org.bouncycastle:bcpkix-jdk15on:1.70")
     testImplementation("org.junit.platform:junit-platform-launcher")
 }
