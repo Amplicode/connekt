@@ -74,10 +74,8 @@ class ConnektScriptingHost(
 
     private fun createCompiledScriptJarsCache() =
         CompiledScriptJarsCache { sourceCode, _ ->
-            val evaluatorVersion = "0.0.2"
-
             val cacheKeyValues = sequenceOf(
-                evaluatorVersion,
+                connektVersion,
                 sourceCode.text.hashCode(),
                 sourceCode.locationId.hashCode(),
                 jvmTarget.replace('.', '-')

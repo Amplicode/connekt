@@ -5,11 +5,8 @@
 
 package io.amplicode.connekt
 
-import io.amplicode.connekt.context.ConnektContext
-import io.amplicode.connekt.context.EnvironmentStore
-import io.amplicode.connekt.context.FileEnvironmentStore
-import io.amplicode.connekt.context.NoOpEnvironmentStore
-import io.amplicode.connekt.context.VariablesStore
+import com.github.ajalt.clikt.core.terminal
+import io.amplicode.connekt.context.*
 import org.mapdb.DBMaker
 import kotlin.script.experimental.host.FileScriptSource
 import kotlin.time.Duration
@@ -18,26 +15,35 @@ import kotlin.time.measureTime
 internal class ConnektCommand : AbstractConnektCommand() {
 
     override fun run() {
-        val context = createContext()
+        if (version) {
+            terminal.println(connektVersion)
+            return
+        }
 
-        context.use { context ->
-            val executionDuration = measureTime {
-                runScript(
-                    EvaluatorOptions(
-                        requestNumber?.minus(1),
-                        compileOnly,
-                        debugLog,
-                        compilationCache
-                    ),
-                    context,
-                    FileScriptSource(script)
-                )
-            }
-            if (debugLog) {
-                printExecutionTimeInfo(executionDuration, context)
+        val script = script
+        if (script != null) {
+            val context = createContext()
+            context.use { context ->
+                val executionDuration = measureTime {
+                    runScript(
+                        EvaluatorOptions(
+                            requestNumber?.minus(1),
+                            compileOnly,
+                            debugLog,
+                            compilationCache
+                        ),
+                        context,
+                        FileScriptSource(script)
+                    )
+                }
+                if (debugLog) {
+                    printExecutionTimeInfo(executionDuration, context)
+                }
             }
         }
     }
+
+    override val printHelpOnEmptyArgs: Boolean = true
 
     private fun printExecutionTimeInfo(executionDuration: Duration, context: ConnektContext) {
         val durationString = executionDuration.toComponents { minutes, seconds, nanoseconds ->
@@ -67,9 +73,9 @@ internal class ConnektCommand : AbstractConnektCommand() {
     private fun createContext(): ConnektContext {
         // DBMaker can't create file in non-existent folder
         // so ensure it exists
-        globalEnvFile.parentFile.mkdirs()
+        storageFile.parentFile.mkdirs()
 
-        val db = DBMaker.fileDB(globalEnvFile)
+        val db = DBMaker.fileDB(storageFile)
             .closeOnJvmShutdown()
             .fileChannelEnable()
             .checksumHeaderBypass()
@@ -85,8 +91,10 @@ internal class ConnektCommand : AbstractConnektCommand() {
 
     private fun createEnvStore(): EnvironmentStore {
         val envName = envName
-        return if (envFile.exists() && !envName.isNullOrBlank())
-            FileEnvironmentStore(envFile, envName) else
-            NoOpEnvironmentStore
+        val envFile = envFile
+        if (envName.isNullOrBlank() || envFile?.exists() != true) {
+            return NoOpEnvironmentStore
+        }
+        return FileEnvironmentStore(envFile, envName)
     }
 }
