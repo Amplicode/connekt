@@ -1,5 +1,7 @@
 package io.amplicode.connekt
 
+import com.github.ajalt.clikt.core.main
+import com.github.ajalt.clikt.parsers.CommandLineParser
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.context.NoEnvironmentException
 import io.amplicode.connekt.context.NoOpEnvironmentStore
@@ -27,9 +29,9 @@ class EvaluatorTest {
         val result = evaluate(
             """
                 val z: String by env
-                
+
                 GET("${'$'}z/hello") {
-                
+
                 }
             """.trimIndent(),
             1
@@ -71,11 +73,11 @@ class EvaluatorTest {
             evaluateThrowing(
                 """
                 GET("http://localhost:$port/foo") {
-                    
+
                 }
-                
+
                 GET("http://localhost:$port/bar") {
-                
+
                 }
                 """.trimIndent(),
                 1
@@ -89,11 +91,11 @@ class EvaluatorTest {
             evaluateThrowing(
                 """
                 val fooRequest by GET("http://localhost:$port/foo") {
-                    
+
                 } then {
                     body!!.string()
                 }
-                
+
                 GET("http://localhost:$port/bar") {
                     queryParam("my-param", fooRequest)
                 }
@@ -139,12 +141,17 @@ class EvaluatorTest {
             NoOpEnvironmentStore,
             VariablesStore(db)
         )
+
         context.use {
             return runScript(
+                EvaluatorOptions(
+                    requestNumber,
+                    false,
+                    false,
+                    false
+                ),
                 context,
                 StringScriptSource(scriptText),
-                requestNumber,
-                false
             )
         }
     }

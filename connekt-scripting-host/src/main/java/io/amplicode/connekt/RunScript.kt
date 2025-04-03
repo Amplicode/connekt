@@ -7,23 +7,45 @@ import kotlin.script.experimental.api.ScriptDiagnostic
 import kotlin.script.experimental.api.SourceCode
 import kotlin.script.experimental.jvm.util.isError
 
+data class EvaluatorOptions(
+    val requestNumber: Int?,
+    val compileOnly: Boolean,
+    val debugLog: Boolean,
+    val compilationCache: Boolean
+) {
+    fun allParams() = sequenceOf(
+        "Request number" to requestNumber,
+        "Compile only" to compileOnly,
+        "With debug log" to debugLog,
+        "Compilation cache" to compilationCache
+    )
+
+    fun isNegativeRequestNumber() =
+        requestNumber?.let { it < 0 } == true
+}
+
 fun runScript(
+    options: EvaluatorOptions,
     context: ConnektContext,
     scriptSourceCode: SourceCode,
-    requestNumber: Int?,
-    useCompilationCache: Boolean
 ): ResultWithDiagnostics<EvaluationResult> {
+    val isCompileOnly = options.compileOnly || options.isNegativeRequestNumber()
+
+    if (options.debugLog) {
+        options.allParams()
+            .map { (name, value) ->
+                "$name: $value"
+            }
+            .forEach(context.printer::debugln)
+    }
+
     val result = ConnektScriptingHost(
-        useCompilationCache,
-        requestNumber != null && requestNumber < 0,
+        options.compilationCache,
+        isCompileOnly,
     ).evalScript(
         ConnektBuilder(context),
         scriptSourceCode
     )
-
-    if (result.returnValueAsError == null && !result.isError()) {
-        RequestExecutor.execute(context, requestNumber)
-    }
 
     result.returnValueAsError
         ?.error
@@ -33,6 +55,22 @@ fun runScript(
         it.exception?.printStackTrace()
         if (it.severity > ScriptDiagnostic.Severity.DEBUG) {
             println(" : ${it.message}" + if (it.exception == null) "" else ": ${it.exception}")
+        }
+    }
+
+    when {
+        isCompileOnly -> {
+            val message = buildString {
+                append("The script was compiled without evaluation")
+                if (options.isNegativeRequestNumber()) {
+                    append(" due to negative request number '${options.requestNumber}'")
+                }
+            }
+            context.printer.println(message)
+        }
+
+        result.returnValueAsError == null && !result.isError() -> {
+            RequestExecutor.execute(context, options.requestNumber)
         }
     }
 

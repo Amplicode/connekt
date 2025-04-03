@@ -3,9 +3,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 val ktorVersion: String by project
 
 plugins {
-    val kotlinVersion = "2.0.21"
-    kotlin("jvm") version kotlinVersion
-    kotlin("plugin.serialization") version kotlinVersion
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 dependencies {
@@ -24,7 +23,7 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.1")
     api("org.mapdb:mapdb:3.1.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
+    implementation(libs.kotlinx.serialization.json)
     testImplementation(kotlin("test"))
     testImplementation("io.ktor:ktor-server-core-jvm:$ktorVersion")
     testImplementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")
