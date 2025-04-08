@@ -91,10 +91,18 @@ internal class ConnektCommand : AbstractConnektCommand() {
 
     private fun createEnvStore(): EnvironmentStore {
         val envName = envName
-        val envFile = envFile
-        if (envName.isNullOrBlank() || envFile?.exists() != true) {
-            return NoOpEnvironmentStore
+
+        if (envName != null) {
+            val envFile = envFile ?: defaultEnvFile()
+            if (envFile?.exists() == true) {
+                return FileEnvironmentStore(envFile, envName)
+            }
         }
-        return FileEnvironmentStore(envFile, envName)
+
+        return NoOpEnvironmentStore
     }
+
+    private fun defaultEnvFile() = script
+        ?.parentFile
+        ?.resolve("connekt.env.json")
 }
