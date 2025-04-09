@@ -6,8 +6,7 @@
 package io.amplicode.connekt
 
 import com.github.ajalt.clikt.core.terminal
-import io.amplicode.connekt.context.*
-import org.mapdb.DBMaker
+import io.amplicode.connekt.context.ConnektContext
 import kotlin.script.experimental.host.FileScriptSource
 import kotlin.time.Duration
 import kotlin.time.measureTime
@@ -22,7 +21,7 @@ internal class ConnektCommand : AbstractConnektCommand() {
 
         val script = script
         if (script != null) {
-            val context = createContext()
+            val context = createContextFactory().createContext(this)
             context.use { context ->
                 val executionDuration = measureTime {
                     runScript(
@@ -70,39 +69,9 @@ internal class ConnektCommand : AbstractConnektCommand() {
         )
     }
 
-    private fun createContext(): ConnektContext {
-        // DBMaker can't create file in non-existent folder
-        // so ensure it exists
-        storageFile.parentFile.mkdirs()
-
-        val db = DBMaker.fileDB(storageFile)
-            .closeOnJvmShutdown()
-            .fileChannelEnable()
-            .checksumHeaderBypass()
-            .make()
-
-        val context = ConnektContext(
-            db,
-            createEnvStore(),
-            VariablesStore(db)
-        )
-        return context
+    private fun createContextFactory(): ConnektContextFactory {
+        return if (!compileOnly)
+            DefaultContextFactory() else
+            CompileOnlyContextFactory()
     }
-
-    private fun createEnvStore(): EnvironmentStore {
-        val envName = envName
-
-        if (envName != null) {
-            val envFile = envFile ?: defaultEnvFile()
-            if (envFile?.exists() == true) {
-                return FileEnvironmentStore(envFile, envName)
-            }
-        }
-
-        return NoOpEnvironmentStore
-    }
-
-    private fun defaultEnvFile() = script
-        ?.parentFile
-        ?.resolve("connekt.env.json")
 }
