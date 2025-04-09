@@ -10,7 +10,16 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
 
-fun OkHttpClient.Builder.applyCertificate(certFile: File): OkHttpClient.Builder {
+/**
+ * Adds a trusted X.509 certificate to the [OkHttpClient.Builder] for use in HTTPS connections.
+ *
+ * This function loads a certificate from the specified file, creates a temporary in-memory
+ * [KeyStore] containing it, and configures the [OkHttpClient.Builder] to trust it. This is useful
+ * when dealing with self-signed certificates or custom certificate authorities.
+ *
+ * @param certFile The [File] containing the X.509 certificate to be trusted.
+ */
+fun OkHttpClient.Builder.addX509Certificate(certFile: File) {
     // Load certificate
     val certificate: Certificate = certFile.inputStream()
         .use(CertificateFactory.getInstance("X.509")::generateCertificate)
@@ -35,10 +44,22 @@ fun OkHttpClient.Builder.applyCertificate(certFile: File): OkHttpClient.Builder 
     }
 
     sslSocketFactory(sslContext.socketFactory, trustManager)
-    return this
 }
 
-fun OkHttpClient.Builder.applyKeyStore(keyStoreFile: File, keystorePassword: String): OkHttpClient.Builder {
+/**
+ * Configures the [OkHttpClient.Builder] to trust certificates from the provided [KeyStore] file.
+ *
+ * This function loads a [KeyStore] from the specified file using the given password, initializes a
+ * [TrustManagerFactory] with it, and sets up an [SSLContext] using the trust managers derived from
+ * that keystore. It then applies the resulting SSL socket factory and [X509TrustManager] to the client builder.
+ *
+ * This is useful when you want the HTTP client to trust a custom set of certificates, such as those
+ * from a corporate or private certificate authority.
+ *
+ * @param keyStoreFile The file containing the keystore in a supported format (e.g., JKS, PKCS12).
+ * @param keystorePassword The password used to unlock the keystore.
+ */
+fun OkHttpClient.Builder.addKeyStore(keyStoreFile: File, keystorePassword: String) {
     val keyStore: KeyStore = KeyStore.getInstance(
         keyStoreFile,
         keystorePassword.toCharArray()
@@ -62,6 +83,4 @@ fun OkHttpClient.Builder.applyKeyStore(keyStoreFile: File, keystorePassword: Str
         sslContext.socketFactory,
         trustManager
     )
-
-    return this
 }

@@ -1,8 +1,8 @@
 package io.amplicode.connekt
 
 import io.amplicode.connekt.dsl.GET
-import io.amplicode.connekt.dsl.applyCertificate
-import io.amplicode.connekt.dsl.applyKeyStore
+import io.amplicode.connekt.dsl.addX509Certificate
+import io.amplicode.connekt.dsl.addKeyStore
 import io.amplicode.connekt.test.utils.server.ServerSslParams
 import io.amplicode.connekt.test.utils.server.TestServer
 import io.amplicode.connekt.test.utils.asUnit
@@ -58,7 +58,7 @@ class SslTest(server: TestServer) : TestWithServer(server) {
     @Test
     fun `self-signed jks via ext function`() = runScript {
         configureClient {
-            applyKeyStore(
+            addKeyStore(
                 sslParams.keyStoreFile,
                 sslParams.keystorePass
             )
@@ -106,7 +106,7 @@ class SslTest(server: TestServer) : TestWithServer(server) {
     @Test
     fun `self-signed pem via ext function`() = runScript {
         configureClient {
-            applyCertificate(sslParams.certPemFile)
+            addX509Certificate(sslParams.certPemFile)
         }
 
         GET("$hostHttps/foo") then {

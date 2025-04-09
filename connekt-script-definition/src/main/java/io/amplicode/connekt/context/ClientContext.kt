@@ -26,9 +26,9 @@ class ClientContextImpl(
 
     override fun getClient(configure: ClientConfigurer): OkHttpClient {
         val client = defaultClient.newBuilder()
-        return client.globalConfigurer()
-            .configure()
-            .buildAndRegister()
+        client.globalConfigurer()
+        client.configure()
+        return client.buildAndRegister()
     }
 
     override fun close() {
@@ -43,6 +43,6 @@ class ClientContextImpl(
         build().also(clients::add)
 }
 
-typealias ClientConfigurer = OkHttpClient.Builder.() -> OkHttpClient.Builder
+typealias ClientConfigurer = OkHttpClient.Builder.() -> Unit
 
-val NoopClientConfigurer: ClientConfigurer = { this }
+val NoopClientConfigurer: ClientConfigurer = { }

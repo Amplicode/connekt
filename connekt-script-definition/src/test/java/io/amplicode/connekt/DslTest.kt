@@ -220,4 +220,13 @@ class DslTest(server: TestServer) : TestWithServer(server) {
             }
         }
     }
+
+    @Test
+    fun `test configure client with empty value`() {
+        runScript {
+            configureClient {
+
+            }
+        }
+    }
 }
