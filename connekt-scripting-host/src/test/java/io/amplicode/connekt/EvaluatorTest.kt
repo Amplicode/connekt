@@ -1,11 +1,8 @@
 package io.amplicode.connekt
 
-import com.github.ajalt.clikt.core.main
-import com.github.ajalt.clikt.parsers.CommandLineParser
-import io.amplicode.connekt.context.ConnektContext
+import io.amplicode.connekt.context.createConnektContext
 import io.amplicode.connekt.context.NoEnvironmentException
 import io.amplicode.connekt.context.NoOpEnvironmentStore
-import io.amplicode.connekt.context.VariablesStore
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.response.*
@@ -136,10 +133,9 @@ class EvaluatorTest {
         requestNumber: Int? = null
     ): ResultWithDiagnostics<EvaluationResult> {
         val db = DBMaker.memoryDB().make()
-        val context = ConnektContext(
+        val context = createConnektContext(
             db,
             NoOpEnvironmentStore,
-            VariablesStore(db)
         )
 
         context.use {

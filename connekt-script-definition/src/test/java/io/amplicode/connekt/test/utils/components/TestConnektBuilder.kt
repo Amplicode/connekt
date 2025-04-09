@@ -1,22 +1,21 @@
 package io.amplicode.connekt.test.utils.components
 
-import io.amplicode.connekt.context.ConnektContext
-import io.amplicode.connekt.context.EnvironmentStore
-import io.amplicode.connekt.context.NoOpEnvironmentStore
-import io.amplicode.connekt.context.VariablesStore
 import io.amplicode.connekt.BaseNonColorPrinter
 import io.amplicode.connekt.Printer
 import io.amplicode.connekt.SystemOutPrinter
+import io.amplicode.connekt.context.ConnektContext
+import io.amplicode.connekt.context.createConnektContext
+import io.amplicode.connekt.context.EnvironmentStore
+import io.amplicode.connekt.context.NoOpEnvironmentStore
 import org.mapdb.DB
 import org.mapdb.DBMaker
 
 fun testConnektContext(
     db: DB = DBMaker.memoryDB().make(),
     environmentStore: EnvironmentStore = NoOpEnvironmentStore
-): ConnektContext = ConnektContext(
+): ConnektContext = createConnektContext(
     db,
     environmentStore,
-    VariablesStore(db),
     TestPrinter()
 )
 

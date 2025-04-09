@@ -1,10 +1,10 @@
 package io.amplicode.connekt
 
 import io.amplicode.connekt.context.ConnektContext
+import io.amplicode.connekt.context.createConnektContext
 import io.amplicode.connekt.context.EnvironmentStore
 import io.amplicode.connekt.context.FileEnvironmentStore
 import io.amplicode.connekt.context.NoOpEnvironmentStore
-import io.amplicode.connekt.context.VariablesStore
 import org.mapdb.DBMaker
 
 interface ConnektContextFactory {
@@ -25,12 +25,7 @@ class DefaultContextFactory : ConnektContextFactory {
             .checksumHeaderBypass()
             .make()
 
-        val context = ConnektContext(
-            db,
-            createEnvStore(command),
-            VariablesStore(db)
-        )
-        return context
+        return createConnektContext(db, createEnvStore(command))
     }
 
     private fun createEnvStore(command: AbstractConnektCommand): EnvironmentStore {
@@ -54,10 +49,9 @@ class DefaultContextFactory : ConnektContextFactory {
 class CompileOnlyContextFactory : ConnektContextFactory {
     override fun createContext(command: AbstractConnektCommand): ConnektContext {
         val db = DBMaker.memoryDB().make()
-        val context = ConnektContext(
+        val context = createConnektContext(
             db,
-            NoOpEnvironmentStore,
-            VariablesStore(db)
+            NoOpEnvironmentStore
         )
         return context
     }
