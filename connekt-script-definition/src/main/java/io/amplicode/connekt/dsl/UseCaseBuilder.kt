@@ -1,17 +1,13 @@
 package io.amplicode.connekt.dsl
 
+import io.amplicode.connekt.*
 import io.amplicode.connekt.context.ConnektContext
-import io.amplicode.connekt.ConnektRequest
-import io.amplicode.connekt.ConnektRequestHolder
-import io.amplicode.connekt.Executable
-import io.amplicode.connekt.Request
-import io.amplicode.connekt.RequestBuilderCall
-import io.amplicode.connekt.RequestExecutor
-import io.amplicode.connekt.RequestPath
-import io.amplicode.connekt.RequestHolder
+import okhttp3.Response
 import kotlin.reflect.KProperty
 
+@ConnektDsl
 class UseCaseBuilder(private val context: ConnektContext) {
+
     @RequestBuilderCall
     @Request("GET")
     @Suppress("FunctionName")
@@ -102,34 +98,22 @@ class UseCaseBuilder(private val context: ConnektContext) {
         RequestBuilder(method, path, context).apply(configure)
     }
 
-    private fun <T : RequestBuilder> addRequest(requestBuilderSupplier: () -> T): RequestHolder {
-        val connektRequest = ConnektRequest(
-            context,
-            requestBuilderSupplier
-        )
-        val requestHolder = RequestHolder(connektRequest)
-        requestsQueue.add(requestHolder)
-        return requestHolder
+    private fun <T : RequestBuilder> addRequest(requestBuilderSupplier: () -> T): Response {
+        val connektRequest = ConnektRequest(context, requestBuilderSupplier)
+        return connektRequest.execute()
     }
 
-    operator fun <R> ConnektRequestHolder<R>.provideDelegate(
+    operator fun <T> T.provideDelegate(
         @Suppress("unused") receiver: Any?,
         @Suppress("unused") prop: KProperty<*>
-    ): RequestDelegate<R> {
+    ): UseCaseRequestDelegate<T> {
         return UseCaseRequestDelegate(this)
     }
 
-    private val requestsQueue =
-        mutableListOf<Executable<*>>()
-
-    fun executeRequests() {
-        requestsQueue.forEach { request ->
-            RequestExecutor.execute(request)
-        }
-    }
+    fun <T> Response.then(handle: Response.() -> T): T = run(handle)
 }
 
-class UseCaseRequestDelegate<T>(private val requestHolder: ConnektRequestHolder<T>) : RequestDelegate<T> {
+class UseCaseRequestDelegate<T>(private val value: T) : RequestDelegate<T> {
     override operator fun getValue(
         @Suppress("unused") thisRef: Nothing?,
         @Suppress("unused") property: KProperty<*>
@@ -144,7 +128,5 @@ class UseCaseRequestDelegate<T>(private val requestHolder: ConnektRequestHolder<
         return getValueImpl()
     }
 
-    private fun getValueImpl(): T {
-        return requestHolder.execute()
-    }
+    private fun getValueImpl(): T = value
 }

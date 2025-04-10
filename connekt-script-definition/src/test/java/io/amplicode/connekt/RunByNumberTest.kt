@@ -18,7 +18,7 @@ class RunByNumberTest(server: TestServer) : TestWithServer(server) {
     }
 
     @Test
-    fun `test inner request builder is ignored`() {
+    fun `run by number`() {
         val responses = ArrayDeque<String>()
 
         fun Response.registerResponse(): String {
@@ -32,12 +32,6 @@ class RunByNumberTest(server: TestServer) : TestWithServer(server) {
             @Suppress("UnusedVariable")
             val echo0 by GET("$host/echo-text") {
                 queryParam("text", 0)
-
-                // 0_1
-                @Suppress("UnusedVariable")
-                val echo0_1 by GET("$host/echo-text") {
-                    queryParam("text", "0_1")
-                }.then(Response::registerResponse)
             }.then(Response::registerResponse)
 
             // 1

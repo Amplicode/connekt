@@ -1,6 +1,7 @@
 package io.amplicode.connekt.test.utils
 
 import io.amplicode.connekt.RequestHolder
+import okhttp3.Response
 
 fun RequestHolder.thenBodyString(handleString: (String) -> Unit = { }) =
     then {
@@ -11,3 +12,6 @@ fun RequestHolder.thenBodyString(handleString: (String) -> Unit = { }) =
 
 fun RequestHolder.thenBodyInt() =
     then { body!!.string().toInt() }
+
+fun Response.asString() = this.body!!.string()
+fun Response.asInt() = this.body!!.string().toInt()

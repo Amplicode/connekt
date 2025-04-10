@@ -16,6 +16,7 @@ import io.amplicode.connekt.context.VariablesStore
 import okhttp3.Response
 import kotlin.reflect.KProperty
 
+@ConnektDsl
 interface ConnektBuilder {
     val env: EnvironmentStore
     val vars: VariablesStore

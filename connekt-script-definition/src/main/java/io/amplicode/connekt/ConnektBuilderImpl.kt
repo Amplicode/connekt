@@ -41,7 +41,6 @@ internal class ConnektBuilderImpl(
                 override fun execute() {
                     context.printer.println("Running flow [${name}]")
                     useCaseBuilder.build()
-                    useCaseBuilder.executeRequests()
                 }
             }
         )
