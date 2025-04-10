@@ -53,7 +53,7 @@ tasks.register("buildConnektRunnerJar") {
 }
 
 group = "io.amplicode"
-version = "1.0-SNAPSHOT"
+version = "2025.1.0-SNAPSHOT"
 
 publishing {
     publications {
