@@ -6,7 +6,7 @@ import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
-import java.io.File
+import com.github.ajalt.clikt.parameters.types.path
 import java.nio.file.Paths
 
 abstract class AbstractConnektCommand : CliktCommand("Connekt") {
@@ -24,8 +24,12 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
         .file(mustExist = true, canBeDir = false, mustBeReadable = true)
 
     val storageFile by option(help = "Storage file")
-        .file(mustExist = false, canBeDir = false, mustBeReadable = true)
-        .default(storageDefaultFile)
+        .path(mustExist = false, canBeDir = false, mustBeReadable = true)
+        .default(connektHome.resolve("connekt-global-env.db"))
+
+    val cookiesFile by option(help = "Cookies file")
+        .path(mustExist = false, canBeDir = false, mustBeReadable = true)
+        .default(connektHome.resolve("cookies.db"))
 
     val envName by option(help = "Environment name")
 
@@ -51,10 +55,10 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
         .flag(default = false)
 }
 
-private val storageDefaultFile: File = run {
+private val connektHome = run {
     val userHome = System.getProperty("user.home")
-    Paths.get(userHome)
-        .resolve(".connekt")
-        .resolve("connekt-global-env.db")
-        .toFile()
+    requireNotNull(userHome) {
+        "System property 'user.home' must be set"
+    }
+    Paths.get(userHome).resolve(".connekt")
 }

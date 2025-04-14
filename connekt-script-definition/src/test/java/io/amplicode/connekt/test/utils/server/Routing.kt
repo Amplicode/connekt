@@ -1,6 +1,7 @@
 package io.amplicode.connekt.test.utils.server
 
 import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.request.receiveText
@@ -28,6 +29,16 @@ fun Application.configureRouting() {
         jsonApi()
         counterApi()
         echoApi()
+        route("/cookies") {
+            post("/foo") {
+                call.response.cookies.apply {
+                    append("foo", "fooValue", path = "/")
+                    append("bar", "barValue", path = "/")
+                    append("baz", "bazValue", path = "/")
+                }
+                call.respond(HttpStatusCode.OK)
+            }
+        }
     }
 }
 
@@ -111,3 +122,4 @@ private fun Routing.counterApi() {
         }
     }
 }
+

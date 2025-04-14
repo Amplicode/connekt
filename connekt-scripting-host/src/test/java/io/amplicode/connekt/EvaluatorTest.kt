@@ -2,7 +2,8 @@ package io.amplicode.connekt
 
 import io.amplicode.connekt.context.createConnektContext
 import io.amplicode.connekt.context.NoEnvironmentException
-import io.amplicode.connekt.context.NoOpEnvironmentStore
+import io.amplicode.connekt.context.NoopEnvironmentStore
+import io.amplicode.connekt.context.NoopCookiesContext
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.response.*
@@ -135,7 +136,8 @@ class EvaluatorTest {
         val db = DBMaker.memoryDB().make()
         val context = createConnektContext(
             db,
-            NoOpEnvironmentStore,
+            NoopEnvironmentStore,
+            NoopCookiesContext,
         )
 
         context.use {

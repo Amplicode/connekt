@@ -1,11 +1,10 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.context.ConnektContext
-import io.amplicode.connekt.context.createConnektContext
-import io.amplicode.connekt.context.EnvironmentStore
-import io.amplicode.connekt.context.FileEnvironmentStore
-import io.amplicode.connekt.context.NoOpEnvironmentStore
+import io.amplicode.connekt.context.*
 import org.mapdb.DBMaker
+import kotlin.io.path.createFile
+import kotlin.io.path.createParentDirectories
+import kotlin.io.path.notExists
 
 interface ConnektContextFactory {
     fun createContext(command: AbstractConnektCommand): ConnektContext
@@ -17,15 +16,28 @@ class DefaultContextFactory : ConnektContextFactory {
 
         // DBMaker can't create file in non-existent folder
         // so ensure it exists
-        storageFile.parentFile.mkdirs()
+        storageFile.createParentDirectories()
 
-        val db = DBMaker.fileDB(storageFile)
+        val db = DBMaker.fileDB(storageFile.toFile())
             .closeOnJvmShutdown()
             .fileChannelEnable()
             .checksumHeaderBypass()
             .make()
 
-        return createConnektContext(db, createEnvStore(command))
+        val cookiesFile = command.cookiesFile
+        if (cookiesFile.notExists()) {
+            cookiesFile.createFile()
+        }
+
+        val cookiesContext = CookiesContextImpl(cookiesFile)
+        val context = createConnektContext(
+            db,
+            createEnvStore(command),
+            cookiesContext
+        ).onClose {
+            cookiesContext.close()
+        }
+        return context
     }
 
     private fun createEnvStore(command: AbstractConnektCommand): EnvironmentStore {
@@ -37,7 +49,7 @@ class DefaultContextFactory : ConnektContextFactory {
             }
         }
 
-        return NoOpEnvironmentStore
+        return NoopEnvironmentStore
     }
 
     private fun defaultEnvFile(command: AbstractConnektCommand) = command
@@ -49,10 +61,10 @@ class DefaultContextFactory : ConnektContextFactory {
 class CompileOnlyContextFactory : ConnektContextFactory {
     override fun createContext(command: AbstractConnektCommand): ConnektContext {
         val db = DBMaker.memoryDB().make()
-        val context = createConnektContext(
+        return createConnektContext(
             db,
-            NoOpEnvironmentStore
+            NoopEnvironmentStore,
+            NoopCookiesContext
         )
-        return context
     }
 }

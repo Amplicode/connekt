@@ -43,7 +43,7 @@ class FileEnvironmentStore(
     }
 }
 
-object NoOpEnvironmentStore : EnvironmentStore {
+object NoopEnvironmentStore : EnvironmentStore {
     override fun <T> getValue(receiver: Any?, property: KProperty<*>): T =
         throw NoEnvironmentException(property.name)
 }

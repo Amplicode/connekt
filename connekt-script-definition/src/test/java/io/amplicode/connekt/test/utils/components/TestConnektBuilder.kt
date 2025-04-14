@@ -4,19 +4,24 @@ import io.amplicode.connekt.BaseNonColorPrinter
 import io.amplicode.connekt.Printer
 import io.amplicode.connekt.SystemOutPrinter
 import io.amplicode.connekt.context.ConnektContext
+import io.amplicode.connekt.context.CookiesContext
 import io.amplicode.connekt.context.createConnektContext
 import io.amplicode.connekt.context.EnvironmentStore
-import io.amplicode.connekt.context.NoOpEnvironmentStore
+import io.amplicode.connekt.context.NoopEnvironmentStore
+import io.amplicode.connekt.context.NoopCookiesContext
 import org.mapdb.DB
 import org.mapdb.DBMaker
 
 fun testConnektContext(
     db: DB = DBMaker.memoryDB().make(),
-    environmentStore: EnvironmentStore = NoOpEnvironmentStore
+    environmentStore: EnvironmentStore = NoopEnvironmentStore,
+    cookiesContext: CookiesContext = NoopCookiesContext,
+    printer: Printer = TestPrinter()
 ): ConnektContext = createConnektContext(
     db,
     environmentStore,
-    TestPrinter()
+    cookiesContext,
+    printer
 )
 
 class TestPrinter : Printer {

@@ -49,13 +49,16 @@ fun ConnektContext.onClose(operation: () -> Unit): ConnektContext {
 fun createConnektContext(
     db: DB,
     environmentStore: EnvironmentStore,
+    cookiesContext: CookiesContext,
     printer: Printer = SystemOutPrinter,
-): ConnektContext = ConnektContext(
-    environmentStore,
-    VariablesStore(db),
-    CookiesContext(db),
-    ResponseValuesContext(db),
-    printer
-).onClose {
-    db.close()
+): ConnektContext {
+    return ConnektContext(
+        environmentStore,
+        VariablesStore(db),
+        cookiesContext,
+        ResponseValuesContext(db),
+        printer
+    ).onClose {
+        db.close()
+    }
 }

@@ -57,12 +57,9 @@ open class RequestBuilder(
     private val path: String,
     private val context: ConnektContext?
 ) {
-    // todo decompose
-    private val requestHints: RequestHints = RequestHints(
-        noCookies = false,
-        noRedirect = false,
-        http2 = false
-    )
+    private var noCookies = false
+    private var noRedirect = false
+    private var http2 = false
 
     private var body: RequestBody? = null
         set(value) {
@@ -76,21 +73,18 @@ open class RequestBuilder(
     private val queryParamsMap = mutableMapOf<String, Any>()
     private val pathParamsMap = mutableMapOf<String, Any>()
 
-    @Suppress("unused")
     fun noCookies() {
-        this.requestHints.noCookies = true
+        noCookies = true
     }
 
-    @Suppress("unused")
     fun noRedirect() {
-        this.requestHints.noRedirect = true
+        noRedirect = true
     }
 
     fun http2() {
-        this.requestHints.http2 = true
+        http2 = true
     }
 
-    @Suppress("unused")
     fun headers(@Header vararg headers: Pair<String, Any>) {
         this.headers.addAll(headers)
     }
@@ -149,14 +143,6 @@ open class RequestBuilder(
     }
 
     private fun applyAdditionalHeaders() {
-        if (!requestHints.noCookies) {
-            context?.cookiesContext
-                ?.cookies
-                ?.forEach<String, String> {
-                    header("Cookie", it)
-                }
-        }
-
         val body = this.body
         when (body) {
             is FormDataBody -> header(
@@ -210,26 +196,12 @@ open class RequestBuilder(
         }
     }
 
-    fun getClientConfigurer() = requestHints.toClientConfigurer()
-
-    data class RequestHints(
-        var noCookies: Boolean,
-        var noRedirect: Boolean,
-        var http2: Boolean
-    )
-
-    fun RequestHints.toClientConfigurer(): ClientConfigurer = {
+    fun getClientConfigurer(): ClientConfigurer = {
         if (!noCookies) {
-            cookieJar(object : CookieJar {
-                override fun loadForRequest(url: HttpUrl): List<Cookie> {
-                    //todo
-                    return listOf()
-                }
-
-                override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-                    //todo
-                }
-            })
+            val cookieJar = context?.cookiesContext?.cookieJar
+            if (cookieJar != null) {
+                cookieJar(cookieJar)
+            }
         }
 
         if (!noRedirect) {
@@ -240,8 +212,6 @@ open class RequestBuilder(
         if (http2) {
             protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE))
         }
-
-        this
     }
 }
 
