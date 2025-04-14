@@ -23,6 +23,7 @@ class CookiesContextImpl(
 ) : CookiesContext {
 
     private val cookieJarImpl = PersistentCookieJar(storage)
+
     override val cookieJar: CookieJar = cookieJarImpl
 
     init {
@@ -77,16 +78,16 @@ private class PersistentCookieJar(private val filePath: Path) : CookieJar, Close
     }
 }
 
-data class CookiesStorage(val cookies: List<SerializableCookie>) : Serializable
+data class CookiesStorage(val cookies: List<SerializableCookie> = emptyList()) : Serializable
 
 data class SerializableCookie(
-    val name: String,
-    val value: String,
-    val domain: String,
-    val path: String,
-    val expiresAt: Long,
-    val secure: Boolean,
-    val httpOnly: Boolean
+    val name: String = "",
+    val value: String = "",
+    val domain: String = "",
+    val path: String = "",
+    val expiresAt: Long = 0L,
+    val secure: Boolean = false,
+    val httpOnly: Boolean = false
 ) : Serializable {
 
     constructor(cookie: Cookie) : this(

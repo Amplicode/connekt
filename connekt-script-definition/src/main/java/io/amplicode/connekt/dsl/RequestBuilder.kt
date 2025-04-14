@@ -61,6 +61,9 @@ open class RequestBuilder(
     private var noRedirect = false
     private var http2 = false
 
+    private val requestBuilderTweaks: MutableList<RequestBuilderConfigurer> = mutableListOf()
+    private val clientBuilderTweaks: MutableList<ClientConfigurer> = mutableListOf()
+
     private var body: RequestBody? = null
         set(value) {
             require(field == null) {
@@ -72,6 +75,14 @@ open class RequestBuilder(
     private var headers = mutableListOf<Pair<String, Any>>()
     private val queryParamsMap = mutableMapOf<String, Any>()
     private val pathParamsMap = mutableMapOf<String, Any>()
+
+    fun configureRequest(configurer: RequestBuilderConfigurer) {
+        requestBuilderTweaks += configurer
+    }
+
+    fun configureClient(configurer: ClientConfigurer) {
+        clientBuilderTweaks += configurer
+    }
 
     fun noCookies() {
         noCookies = true
@@ -133,12 +144,18 @@ open class RequestBuilder(
         pathParamsMap[key] = value
     }
 
+    // TODO move to impl API
     fun build(): Request {
         applyAdditionalHeaders()
         val requestBuilder = Request.Builder()
             .headers(buildHeaders(headers))
             .url(createUrl())
             .method(method, createBody(body))
+
+        requestBuilderTweaks.forEach { configure ->
+            requestBuilder.configure()
+        }
+
         return requestBuilder.build()
     }
 
@@ -196,6 +213,7 @@ open class RequestBuilder(
         }
     }
 
+    // TODO move into impl API
     fun getClientConfigurer(): ClientConfigurer = {
         if (!noCookies) {
             val cookieJar = context?.cookiesContext?.cookieJar
@@ -212,8 +230,14 @@ open class RequestBuilder(
         if (http2) {
             protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE))
         }
+
+        clientBuilderTweaks.forEach { configure ->
+           configure()
+        }
     }
 }
+
+typealias RequestBuilderConfigurer = Request.Builder.() -> Unit
 
 class GetBuilder(path: String, context: ConnektContext) : RequestBuilder("GET", path, context)
 class PostBuilder(path: String, context: ConnektContext) : RequestBuilder("POST", path, context)
