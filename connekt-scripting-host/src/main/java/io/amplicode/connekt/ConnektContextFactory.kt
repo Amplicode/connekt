@@ -29,14 +29,16 @@ class DefaultContextFactory : ConnektContextFactory {
             cookiesFile.createFile()
         }
 
-        val cookiesContext = CookiesContextImpl(cookiesFile)
+        val connektLifeCycleCallbacks = ConnektLifeCycleCallbacksImpl()
+        val cookiesContext = CookiesContextImpl(cookiesFile, connektLifeCycleCallbacks)
         val context = createConnektContext(
             db,
             createEnvStore(command),
             cookiesContext
         ).onClose {
-            cookiesContext.close()
+            connektLifeCycleCallbacks.fireClosed()
         }
+
         return context
     }
 
