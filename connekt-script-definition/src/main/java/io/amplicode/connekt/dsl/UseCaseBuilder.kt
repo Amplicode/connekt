@@ -1,5 +1,6 @@
 package io.amplicode.connekt.dsl
 
+import com.jayway.jsonpath.ReadContext
 import io.amplicode.connekt.*
 import io.amplicode.connekt.context.ConnektContext
 import okhttp3.Response
@@ -110,7 +111,9 @@ class UseCaseBuilder(private val context: ConnektContext) {
         return UseCaseRequestDelegate(this)
     }
 
-    fun <T> Response.then(handle: Response.() -> T): T = run(handle)
+    infix fun <T> Response.then(handle: Response.() -> T): T = run(handle)
+
+    fun Response.jsonPath(): ReadContext = context.jsonContext.getReadContext(this)
 }
 
 class UseCaseRequestDelegate<T>(private val value: T) : RequestDelegate<T> {
