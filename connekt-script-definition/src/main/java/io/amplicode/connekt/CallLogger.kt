@@ -11,10 +11,14 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
+import java.nio.file.Path
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-class CallLogger(private val printer: Printer) : Interceptor {
+class CallLogger(
+    private val printer: Printer,
+    private val responseStorageDir: Path?
+) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
 
@@ -58,8 +62,11 @@ class CallLogger(private val printer: Printer) : Interceptor {
 
     private fun logResponse(response: Response) {
         printer.println(
-            listOfNotNull(printProtocol(response.protocol), response.code, response.message)
-                .joinToString(separator = " "),
+            listOfNotNull(
+                printProtocol(response.protocol),
+                response.code,
+                response.message
+            ).joinToString(separator = " "),
             BLUE
         )
 
@@ -80,36 +87,24 @@ class CallLogger(private val printer: Printer) : Interceptor {
         val contentLength = responseBody.contentLength()
 
         if (contentLength != 0L) {
-            logResponseBody(responseBody, buffer)
+            logResponseBody(response.headers, responseBody, buffer)
         }
     }
 
-    private fun logResponseBody(responseBody: ResponseBody, buffer: Buffer) {
+    private fun logResponseBody(headers: Headers, responseBody: ResponseBody, buffer: Buffer) {
         val contentType = responseBody.contentType()
-        val charset: Charset = contentType?.charset(StandardCharsets.UTF_8) ?: StandardCharsets.UTF_8
-        val mediaType = contentType?.toString()
-        val fileExtension = mediaType?.let { getExtensionForFileTypes(it) }
+        val fileExtension = contentType?.let(::getExtensionForFileTypes) ?: "txt"
+        val contentDisposition = headers["Content-Disposition"]
+            ?.let { ContentDisposition.parseFromHeader(it) }
 
-        printer.println("")
-
-        if (fileExtension != null) {
-            val downloadDir = File(System.getProperty("user.home"), ".connekt")
-            if (!downloadDir.exists()) {
-                downloadDir.mkdirs()
-            }
-
-            val fileName = File(downloadDir, getCurrentTimestamp() + "." + fileExtension)
-
-            FileOutputStream(fileName).use {
-                buffer.clone().copyTo(it)
-            }
-
-            printer.println("Response file saved.\n> $fileName", GREEN)
-        } else {
+        // Log if only this is not a file
+        val logResponseBody = contentDisposition?.filename() == null
+        if (logResponseBody) {
+            printer.println("")
+            val charset: Charset = contentType?.charset() ?: StandardCharsets.UTF_8
             var responseText = buffer.clone().readString(charset)
-
             // Apply pretty format if JSON
-            if (mediaType == "application/json") {
+            if (contentType?.hasSubTypeOf("json") == true) {
                 try {
                     val objectMapper = jacksonObjectMapper()
                     val node = objectMapper.readTree(responseText)
@@ -119,8 +114,27 @@ class CallLogger(private val printer: Printer) : Interceptor {
                     // ignore
                 }
             }
-
             printer.println(responseText, GREEN)
+        }
+
+        val responseStorageDir = responseStorageDir?.toFile()
+        if (responseStorageDir != null) {
+            if (!responseStorageDir.exists()) {
+                responseStorageDir.mkdirs()
+            }
+
+            val file = File(
+                responseStorageDir,
+                getCurrentTimestamp() + "." + fileExtension
+            )
+
+            FileOutputStream(file).use {
+                buffer.clone().copyTo(it)
+            }
+
+            printer.println("")
+            printer.println("Response file saved.", GREEN)
+            printer.println("> file://$file", GREEN)
         }
     }
 
@@ -141,24 +155,45 @@ class CallLogger(private val printer: Printer) : Interceptor {
         Protocol.HTTP_2, Protocol.H2_PRIOR_KNOWLEDGE -> "HTTP/2"
         else -> protocol.name
     }
+}
 
+private val fileMediaTypes = listOf(
+    "image",
+    "video",
+    "audio",
+    "model",
+)
+
+private fun getExtensionForFileTypes(contentType: MediaType): String? = when {
+    fileMediaTypes.any(contentType::hasTypeOf) -> contentType.subtype
+    contentType.hasSubTypeOf("pdf") -> "pdf"
+    else -> null
+}
+
+fun MediaType.hasSubTypeOf(subtype: String) =
+    this.subtype.equals(subtype, ignoreCase = true)
+
+fun MediaType.hasTypeOf(type: String) =
+    this.type.equals(type, ignoreCase = true)
+
+data class ContentDisposition(
+    val type: String,
+    val parameters: Map<String, String>
+) {
     companion object {
-        private val fileMediaTypes = listOf(
-            "image",
-            "video",
-            "audio",
-            "model",
-        )
+        fun parseFromHeader(header: String): ContentDisposition {
+            val parts = header.split(";")
+            val type = parts[0].trim()
 
-        private fun getExtensionForFileTypes(contentType: String): String? {
-            if (fileMediaTypes.any { contentType.startsWith("$it/") }) {
-                return contentType.substringAfter("/").substringBefore(" ")
+            val params = parts.drop(1).associate { param ->
+                val (key, value) = param.trim().split("=", limit = 2)
+                key to value.trim('"')
             }
 
-            if (contentType == "application/pdf")
-                return "pdf"
-
-            return null
+            return ContentDisposition(type, params)
         }
     }
 }
+
+fun ContentDisposition.name() = parameters["name"]
+fun ContentDisposition.filename() = parameters["filename"]

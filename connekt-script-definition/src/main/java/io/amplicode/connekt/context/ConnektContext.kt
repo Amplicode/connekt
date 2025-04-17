@@ -1,16 +1,19 @@
 package io.amplicode.connekt.context
 
+import io.amplicode.connekt.CallLogger
 import io.amplicode.connekt.Printer
 import io.amplicode.connekt.SystemOutPrinter
 import org.mapdb.DB
+import java.nio.file.Path
+import kotlin.io.path.Path
 
 class ConnektContext(
     val env: EnvironmentStore,
     val vars: VariablesStore,
     val cookiesContext: CookiesContext,
     val responseValuesContext: ResponseValuesContext,
+    val clientContext: ClientContext,
     val printer: Printer = SystemOutPrinter,
-    val clientContext: ClientContext = ClientContextImpl(printer),
     val jsonContext: JsonContext = JsonContext(),
     val requestsContext: RequestsContext = RequestsContext(),
 ) : AutoCloseable {
@@ -51,14 +54,21 @@ fun createConnektContext(
     environmentStore: EnvironmentStore,
     cookiesContext: CookiesContext,
     printer: Printer = SystemOutPrinter,
+    responseStorageDir: Path? = defaultDownloadsDir,
 ): ConnektContext {
+    val callLogger = CallLogger(printer, responseStorageDir)
     return ConnektContext(
         environmentStore,
         VariablesStore(db),
         cookiesContext,
         ResponseValuesContext(db),
+        ClientContextImpl(callLogger),
         printer
     ).onClose {
         db.close()
     }
 }
+
+private val defaultDownloadsDir = Path(System.getProperty("user.home"))
+    .resolve(".connekt")
+    .resolve("response")

@@ -12,7 +12,7 @@ interface ClientContext : Closeable {
 }
 
 class ClientContextImpl(
-    printer: Printer,
+    callLogger: CallLogger,
     override var globalConfigurer: ClientConfigurer = NoopClientConfigurer
 ) : ClientContext {
 
@@ -21,7 +21,7 @@ class ClientContextImpl(
     private val defaultClient = OkHttpClient.Builder()
         .readTimeout(1, TimeUnit.MINUTES)
         .writeTimeout(1, TimeUnit.MINUTES)
-        .addNetworkInterceptor(CallLogger(printer))
+        .addNetworkInterceptor(callLogger)
         .buildAndRegister()
 
     override fun getClient(configure: ClientConfigurer): OkHttpClient {

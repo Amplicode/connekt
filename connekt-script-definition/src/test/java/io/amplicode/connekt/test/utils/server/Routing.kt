@@ -1,14 +1,19 @@
 package io.amplicode.connekt.test.utils.server
 
+import io.ktor.http.ContentDisposition
 import io.ktor.http.ContentType
 import io.ktor.http.Cookie
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
+import io.ktor.server.http.content.staticResources
 import io.ktor.server.request.receive
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.request.receiveText
 import io.ktor.server.request.uri
+import io.ktor.server.response.header
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondOutputStream
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Routing
 import io.ktor.server.routing.RoutingContext
@@ -33,6 +38,37 @@ fun Application.configureRouting() {
         counterApi()
         echoApi()
         cookiesApi()
+        staticResources(
+            "/static",
+            "testserver",
+            index = null
+        )
+        downloadApi()
+    }
+}
+
+private fun Routing.downloadApi() {
+    get("/download") {
+        val filename = call.queryParameters.getOrFail("filename")
+        val length = call.queryParameters.getOrFail<Int>("length")
+
+        call.response.header(
+            HttpHeaders.ContentDisposition,
+            ContentDisposition.Attachment.withParameter(
+                ContentDisposition.Parameters.FileName,
+                filename
+            ).toString()
+        )
+
+        val contentType = call.parameters["contentType"]
+            ?.let { ContentType.parse(it) }
+
+        call.respondOutputStream(contentType) {
+            val chars = ('a'..'z')
+            (0 until length).asSequence()
+                .map { chars.random().code }
+                .forEach<Int>(::write)
+        }
     }
 }
 
