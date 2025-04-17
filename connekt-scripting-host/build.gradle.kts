@@ -11,6 +11,14 @@ plugins {
     `maven-publish`
 }
 
+group = "io.amplicode"
+version = if (project.hasProperty("version")) {
+    project.findProperty("version") as String
+} else {
+    "0.1-SNAPSHOT"
+}
+
+
 dependencies {
     implementation(project(":connekt-script-definition"))
 
@@ -52,8 +60,28 @@ tasks.register("buildConnektRunnerJar") {
     dependsOn(tasks.installDist)
 }
 
-group = "io.amplicode"
-version = "2025.1.3-SNAPSHOT"
+application {
+    mainClass = "io.amplicode.connekt.EvaluatorKt"
+}
+
+val dockerBuild by tasks.register<Exec>("dockerBuild") {
+    dependsOn(tasks.installDist)
+
+    commandLine(
+        "docker", "build",
+        "-t", "ghcr.io/amplicode/connekt:${version}",
+        "."
+    )
+}
+
+tasks.register<Exec>("dockerPush") {
+    dependsOn(dockerBuild)
+
+    commandLine(
+        "docker", "push",
+        "ghcr.io/amplicode/connekt:${version}"
+    )
+}
 
 publishing {
     publications {

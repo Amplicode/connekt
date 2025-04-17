@@ -67,7 +67,7 @@ PUT("$baseUrl/rest/conference/57") {
 
 //get unauthorized
 val `get unauthorized` by GET("$baseUrl/rest/conference/{id}") {
-    pathParams("id", createdConferenceId)
+    pathParam("id", createdConferenceId)
 } then {
     assertThat(code).isEqualTo(200)
 }
@@ -143,7 +143,7 @@ POST("$baseUrl/rest/conference") {
     jsonPath().readInt("id")
 }
 
-flow(name = "dummy test") {
+useCase(name = "dummy test") {
     data class Conference(val id: Int)
 
     val createdConferenceId: Int by POST("$baseUrl/rest/conference") {
@@ -170,7 +170,7 @@ flow(name = "dummy test") {
 
     for (id in 1..10) {
         val conference by GET("$baseUrl/rest/conference/{id}") {
-            pathParams("id", id)
+            pathParam("id", id)
 
             contentType("application/json")
             bearerAuth(accessToken)

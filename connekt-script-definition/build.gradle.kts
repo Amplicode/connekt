@@ -7,6 +7,13 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+group = "io.amplicode"
+version = if (project.hasProperty("version")) {
+    project.findProperty("version") as String
+} else {
+    "0.1-SNAPSHOT"
+}
+
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-scripting-common")
     implementation("org.jetbrains.kotlin:kotlin-scripting-jvm")
