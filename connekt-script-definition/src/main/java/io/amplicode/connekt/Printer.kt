@@ -10,8 +10,7 @@ interface Printer {
     enum class Color(val code: String) {
         BLUE("34"),
         GREEN("32"),
-        RED("31"),
-        DEBUG("30");
+        RED("31");
 
         fun ansi(): String {
             return "\u001B[${code}m"
@@ -28,7 +27,7 @@ fun Printer.println(text: String, color: Color? = null) {
 }
 
 fun Printer.debugln(text: String) {
-    println(text, Color.DEBUG)
+    println(text)
 }
 
 abstract class BaseColorPrinter : Printer {
