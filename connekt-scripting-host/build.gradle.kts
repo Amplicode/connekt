@@ -64,25 +64,6 @@ application {
     mainClass = "io.amplicode.connekt.EvaluatorKt"
 }
 
-val dockerBuild by tasks.register<Exec>("dockerBuild") {
-    dependsOn(tasks.installDist)
-
-    commandLine(
-        "docker", "build",
-        "-t", "ghcr.io/amplicode/connekt:${version}",
-        "."
-    )
-}
-
-tasks.register<Exec>("dockerPush") {
-    dependsOn(dockerBuild)
-
-    commandLine(
-        "docker", "push",
-        "ghcr.io/amplicode/connekt:${version}"
-    )
-}
-
 publishing {
     publications {
         create<MavenPublication>("distribution") {
