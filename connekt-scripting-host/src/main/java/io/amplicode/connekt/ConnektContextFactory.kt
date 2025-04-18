@@ -43,15 +43,17 @@ class DefaultContextFactory : ConnektContextFactory {
     }
 
     private fun createEnvStore(command: AbstractConnektCommand): EnvironmentStore {
+        val overriddenValues = ValuesEnvironmentStore(command.envParams.toMap())
+
         val envName = command.envName
         if (envName != null) {
             val envFile = command.envFile ?: defaultEnvFile(command)
             if (envFile?.exists() == true) {
-                return FileEnvironmentStore(envFile, envName)
+                return DelegateEnvironmentStore(listOf(overriddenValues, FileEnvironmentStore(envFile, envName)))
             }
         }
 
-        return NoopEnvironmentStore
+        return overriddenValues
     }
 
     private fun defaultEnvFile(command: AbstractConnektCommand) = command

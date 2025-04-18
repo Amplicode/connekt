@@ -4,6 +4,7 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.options.transformAll
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.path
@@ -32,6 +33,13 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
         .default(connektHome.resolve("cookies.db"))
 
     val envName by option(help = "Environment name")
+
+    val envParams by option("--env-param")
+        .transformAll { input ->
+            input.map { val split = it.split("=", limit = 2)
+                split[0] to split[1]
+            }
+        }
 
     val compilationCache by option(
         names = arrayOf("--compilation-cache", "-c"),
