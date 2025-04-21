@@ -3,8 +3,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 val ktorVersion: String by project
 
 plugins {
-    alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.kotlin.serialization)
+    kotlin("jvm")
+    kotlin("plugin.serialization")
 }
 
 group = "io.amplicode"

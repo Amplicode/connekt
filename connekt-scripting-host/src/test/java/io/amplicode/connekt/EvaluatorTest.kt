@@ -1,7 +1,7 @@
 package io.amplicode.connekt
 
 import io.amplicode.connekt.context.createConnektContext
-import io.amplicode.connekt.context.NoEnvironmentException
+import io.amplicode.connekt.context.NoEnvironmentPropertyException
 import io.amplicode.connekt.context.NoopEnvironmentStore
 import io.amplicode.connekt.context.NoopCookiesContext
 import io.ktor.server.engine.*
@@ -35,7 +35,7 @@ class EvaluatorTest {
             1
         )
         val error = result.returnValueAsError?.error
-        assertIs<NoEnvironmentException>(error)
+        assertIs<NoEnvironmentPropertyException>(error)
 
         assert(!result.isError()) {
             result.reports
@@ -144,9 +144,9 @@ class EvaluatorTest {
             return runScript(
                 EvaluatorOptions(
                     requestNumber,
-                    false,
-                    false,
-                    false
+                    compileOnly = false,
+                    debugLog = false,
+                    compilationCache = false
                 ),
                 context,
                 StringScriptSource(scriptText),

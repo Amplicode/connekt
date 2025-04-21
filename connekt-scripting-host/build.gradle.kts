@@ -5,7 +5,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    alias(libs.plugins.kotlin.jvm)
+    kotlin("jvm")
     application
     distribution
     `maven-publish`

@@ -17,4 +17,8 @@ class InMemoryEnvironmentStore : EnvironmentStore {
     ): T {
         return env[property.name] as T
     }
+
+    override fun contains(property: KProperty<*>): Boolean {
+        return property.name in env
+    }
 }
