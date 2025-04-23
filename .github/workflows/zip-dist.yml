@@ -35,6 +35,6 @@ jobs:
       - name: Upload ZIP to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: build/distributions/*.zip
+          files: connekt-scripting-host/build/distributions/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
