@@ -12,12 +12,7 @@ plugins {
 }
 
 group = "io.amplicode"
-version = if (project.hasProperty("version")) {
-    project.findProperty("version") as String
-} else {
-    "0.1-SNAPSHOT"
-}
-
+version = "0.2.3"
 
 dependencies {
     implementation(project(":connekt-script-definition"))
@@ -62,6 +57,12 @@ tasks.register("buildConnektRunnerJar") {
 
 application {
     mainClass = "io.amplicode.connekt.EvaluatorKt"
+}
+
+distributions {
+    main {
+        distributionBaseName.set("connekt-cli")
+    }
 }
 
 publishing {
