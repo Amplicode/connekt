@@ -36,7 +36,7 @@ internal class ConnektBuilderImpl(
     ) {
         val useCaseBuilder = UseCaseBuilder(context)
 
-        context.requestsContext.addRequest(
+        context.requestsContext.registerExecutable(
             object : Executable<Unit>() {
                 override fun execute() {
                     context.printer.println("Running flow [${name}]")
@@ -62,15 +62,16 @@ internal class ConnektBuilderImpl(
         path: String,
         configure: RequestBuilder.() -> Unit
     ): RequestHolder {
-        val connektRequest = ConnektRequest(context) {
+        val requestBuilderProvider = RequestBuilderProvider {
             RequestBuilder(method, path, context).apply(configure)
         }
-        val thenable = RequestHolder(connektRequest)
-        context.requestsContext.addRequest(thenable)
-        return thenable
+        val requestsContext = context.requestsContext
+        val requestHolder = RequestHolder(requestBuilderProvider, context)
+        requestsContext.registerExecutable(requestHolder)
+        return requestHolder
     }
 
-    override operator fun <R> ConnektRequestHolder<R>.provideDelegate(
+    override operator fun <R> ConnektRequestExecutable<R>.provideDelegate(
         @Suppress("unused")
         receiver: Any?,
         prop: KProperty<*>
@@ -83,7 +84,7 @@ internal class ConnektBuilderImpl(
 
 class PersistentRequestDelegate<T>(
     private val connektContext: ConnektContext,
-    private val requestHolder: ConnektRequestHolder<T>,
+    private val requestHolder: ConnektRequestExecutable<T>,
     private val storageKey: String
 ) : RequestDelegate<T> {
 

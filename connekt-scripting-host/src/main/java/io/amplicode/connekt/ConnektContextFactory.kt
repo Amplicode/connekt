@@ -14,7 +14,7 @@ class DefaultContextFactory : ConnektContextFactory {
     override fun createContext(command: AbstractConnektCommand): ConnektContext {
         val storageFile = command.storageFile
 
-        // DBMaker can't create file in non-existent folder
+        // DBMaker can't create a file in a non-existent folder
         // so ensure it exists
         storageFile.createParentDirectories()
 

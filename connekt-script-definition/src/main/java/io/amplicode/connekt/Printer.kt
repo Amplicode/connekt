@@ -22,7 +22,7 @@ interface Printer {
     }
 }
 
-fun Printer.println(text: String, color: Color? = null) {
+fun Printer.println(text: String = "", color: Color? = null) {
     print(text + "\n", color)
 }
 

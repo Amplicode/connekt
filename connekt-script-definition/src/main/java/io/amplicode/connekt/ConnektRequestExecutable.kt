@@ -1,5 +1,7 @@
 package io.amplicode.connekt
 
+import io.amplicode.connekt.context.ConnektContext
+import io.amplicode.connekt.dsl.RequestBuilder
 import okhttp3.Response
 
 /**
@@ -7,7 +9,7 @@ import okhttp3.Response
  *
  * @param T execution result type
  */
-sealed class ConnektRequestHolder<T>() : Executable<T>() {
+abstract class ConnektRequestExecutable<T>() : Executable<T>() {
 
     protected val listeners = mutableListOf<ExecutionListener<T>>()
 
@@ -31,25 +33,31 @@ sealed class ConnektRequestHolder<T>() : Executable<T>() {
 }
 
 class RequestHolder(
-    private val connektRequest: ConnektRequest
-) : ConnektRequestHolder<Response>() {
+    private val requestBuilderProvider: RequestBuilderProvider,
+    private val context: ConnektContext
+) : ConnektRequestExecutable<Response>() {
 
-    private var mapper: MappedRequestHolder<*>? = null
+    private val executionStrategy
+        get() = context.requestsContext.getExecutionStrategy(this, context)
 
     override fun doExecute(): Response {
-        return connektRequest.execute()
+        val requestBuilder = requestBuilderProvider.getRequestBuilder()
+        val response = executionStrategy.execute(requestBuilder)
+        return response
     }
 
     /**
      * Provides controls to handle response
      */
     infix fun <R> then(mapFunction: MapFunction<Response, R>): MappedRequestHolder<R> {
-        val mappedRequestHolder = MappedRequestHolder(
-            this,
-            mapFunction
-        )
-        mapper = mappedRequestHolder
-        return mappedRequestHolder
+        val upstreamRequestHolder = if (executionStrategy.isMappingAllowed()) {
+            this
+        } else {
+            // Provide a request holder that never executes.
+            // So mapping never triggerred.
+            dummyRequestHolder
+        }
+        return MappedRequestHolder(context, upstreamRequestHolder, mapFunction)
     }
 }
 
@@ -57,9 +65,10 @@ class RequestHolder(
  * @param R mapped type
  */
 class MappedRequestHolder<R>(
-    private val originRequestHolder: ConnektRequestHolder<Response>,
+    private val context: ConnektContext,
+    private val originRequestHolder: ConnektRequestExecutable<Response>,
     private val mapFunction: MapFunction<Response, R>
-) : ConnektRequestHolder<R>() {
+) : ConnektRequestExecutable<R>() {
 
     private var response: Response? = null
     private var result: R? = null
@@ -81,7 +90,7 @@ class MappedRequestHolder<R>(
         // Request is not yet executed
         if (response == null) {
             originRequestHolder.execute()
-            RequestExecutor.ignoreOnExecutionPhase(originRequestHolder)
+            context.requestsContext.ignoreOnExecutionPhase(originRequestHolder)
         }
 
         // Expect not to be null once the request is executed
@@ -95,10 +104,20 @@ interface ExecutionListener<T> {
     fun onResultObtained(result: T)
 }
 
-fun <T> ConnektRequestHolder<T>.onResultObtained(handleResult: (T) -> Unit) {
+fun <T> ConnektRequestExecutable<T>.onResultObtained(handleResult: (T) -> Unit) {
     this.addExecutionListener(object : ExecutionListener<T> {
         override fun onResultObtained(result: T) {
             handleResult(result)
         }
     })
+}
+
+private val dummyRequestHolder by lazy {
+    object : ConnektRequestExecutable<Response>() {
+        override fun doExecute() = throw UnsupportedOperationException()
+    }
+}
+
+fun interface RequestBuilderProvider {
+    fun getRequestBuilder(): RequestBuilder
 }

@@ -100,8 +100,9 @@ class UseCaseBuilder(private val context: ConnektContext) {
     }
 
     private fun <T : RequestBuilder> addRequest(requestBuilderSupplier: () -> T): Response {
-        val connektRequest = ConnektRequest(context, requestBuilderSupplier)
-        return connektRequest.execute()
+        val executionStrategy = DefaultExecutionStrategy(context)
+        val requestBuilder = requestBuilderSupplier()
+        return executionStrategy.execute(requestBuilder)
     }
 
     operator fun <T> T.provideDelegate(

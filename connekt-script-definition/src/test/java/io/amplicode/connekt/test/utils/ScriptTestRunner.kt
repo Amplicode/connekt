@@ -1,7 +1,6 @@
 package io.amplicode.connekt.test.utils
 
 import io.amplicode.connekt.ConnektBuilder
-import io.amplicode.connekt.RequestExecutor
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.dsl.ConnektBuilder
 import io.amplicode.connekt.test.utils.components.TestPrinter
@@ -18,7 +17,7 @@ fun runScript(
     val connektBuilder = ConnektBuilder(context)
     connektBuilder.configureBuilder()
     context.use {
-        RequestExecutor.execute(context, requestNumber)
+        it.requestsContext.execute(requestNumber)
     }
     return (context.printer as TestPrinter).stringPrinter.asString()
 }

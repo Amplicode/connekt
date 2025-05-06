@@ -31,6 +31,9 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.1")
     api("org.mapdb:mapdb:3.1.0")
     implementation(libs.kotlinx.serialization.json)
+
+    api("com.github.mrmike:ok2curl:0.8.0")
+
     testImplementation(kotlin("test"))
     testImplementation("io.ktor:ktor-server-core-jvm:$ktorVersion")
     testImplementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")

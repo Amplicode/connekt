@@ -22,11 +22,21 @@ internal class ConnektCommand : AbstractConnektCommand() {
         val script = script
         if (script != null) {
             val context = createContextFactory().createContext(this)
+            val requestIndex = requestNumber?.minus(1)
+
+            if (executionMode == ExecutionMode.CURL) {
+                requireNotNull(requestIndex)
+                context.requestsContext.registerExecutionStrategyForRequest(
+                    requestIndex,
+                    CurlExecutionStrategy(context)
+                )
+            }
+
             context.use { context ->
                 val executionDuration = measureTime {
                     runScript(
                         EvaluatorOptions(
-                            requestNumber?.minus(1),
+                            requestIndex,
                             compileOnly,
                             debugLog,
                             compilationCache

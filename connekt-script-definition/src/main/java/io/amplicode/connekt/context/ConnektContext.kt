@@ -4,6 +4,7 @@ import io.amplicode.connekt.CallLogger
 import io.amplicode.connekt.Printer
 import io.amplicode.connekt.SystemOutPrinter
 import org.mapdb.DB
+import org.mapdb.Serializer
 import java.nio.file.Path
 import kotlin.io.path.Path
 

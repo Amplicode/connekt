@@ -54,7 +54,7 @@ interface ConnektBuilder {
 
     fun <T> ReadContext.readList(path: String, clazz: Class<T>): List<T>
 
-    operator fun <R> ConnektRequestHolder<R>.provideDelegate(
+    operator fun <R> ConnektRequestExecutable<R>.provideDelegate(
         @Suppress("unused")
         receiver: Any?,
         prop: KProperty<*>

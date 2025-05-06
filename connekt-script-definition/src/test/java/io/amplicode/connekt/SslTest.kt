@@ -98,7 +98,7 @@ class SslTest(server: TestServer) : TestWithServer(server) {
             sslSocketFactory(sslContext.socketFactory, trustManager)
         }
 
-        GET("$host/foo") then {
+        GET("$hostHttps/foo") then {
             assert(body!!.string() == "foo")
         }
     }.asUnit()
