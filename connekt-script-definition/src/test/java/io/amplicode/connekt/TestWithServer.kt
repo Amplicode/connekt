@@ -1,10 +1,8 @@
 package io.amplicode.connekt
 
 import io.amplicode.connekt.dsl.ConnektBuilder
-import io.amplicode.connekt.dsl.ConnektDsl
 import io.amplicode.connekt.dsl.GET
 import io.amplicode.connekt.dsl.POST
-import io.amplicode.connekt.dsl.UseCaseBuilder
 import io.amplicode.connekt.test.utils.server.TestServer
 import io.amplicode.connekt.test.utils.server.TestServerParamResolver
 import org.junit.jupiter.api.extension.ExtendWith

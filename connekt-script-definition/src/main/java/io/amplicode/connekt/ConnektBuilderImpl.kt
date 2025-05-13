@@ -13,7 +13,8 @@ import io.amplicode.connekt.dsl.UseCaseBuilder
 import okhttp3.Response
 import kotlin.reflect.KProperty
 
-fun ConnektBuilder(context: ConnektContext): ConnektBuilder = ConnektBuilderImpl(context)
+internal fun ConnektBuilder(context: ConnektContext): ConnektBuilder =
+    ConnektBuilderImpl(context)
 
 internal class ConnektBuilderImpl(
     private val context: ConnektContext
@@ -29,21 +30,17 @@ internal class ConnektBuilderImpl(
         context.clientContext.globalConfigurer = configure
     }
 
-    @RequestBuilderCall
     override fun useCase(
         name: String?,
-        build: UseCaseBuilder.() -> Unit
+        runUseCase: UseCaseBuilder.() -> Unit
     ) {
-        val useCaseBuilder = UseCaseBuilder(context)
-
-        context.requestsContext.registerExecutable(
-            object : Executable<Unit>() {
-                override fun execute() {
-                    context.printer.println("Running flow [${name}]")
-                    useCaseBuilder.build()
-                }
-            }
-        )
+        val useCase = object : UseCase {
+            override val name: String? = name
+            override fun perform(useCaseBuilder: UseCaseBuilder) =
+                useCaseBuilder.runUseCase()
+        }
+        val useCaseExecutable = UseCaseExecutable(context, useCase)
+        context.requestsContext.registerExecutable(useCaseExecutable)
     }
 
     override fun Response.jsonPath(): ReadContext {
@@ -80,6 +77,21 @@ internal class ConnektBuilderImpl(
         this,
         prop.name
     )
+}
+
+private class UseCaseExecutable(
+    private val context: ConnektContext,
+    private val useCase: UseCase
+) : Executable<Unit>() {
+    override fun execute() {
+        val executionStrategy = context.requestsContext.getExecutionStrategy(this, context)
+        executionStrategy.executeUseCase(useCase)
+    }
+}
+
+interface UseCase {
+    val name: String?
+    fun perform(useCaseBuilder: UseCaseBuilder)
 }
 
 class PersistentRequestDelegate<T>(

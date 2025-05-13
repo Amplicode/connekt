@@ -42,7 +42,7 @@ class RequestHolder(
 
     override fun doExecute(): Response {
         val requestBuilder = requestBuilderProvider.getRequestBuilder()
-        val response = executionStrategy.execute(requestBuilder)
+        val response = executionStrategy.executeRequest(requestBuilder)
         return response
     }
 

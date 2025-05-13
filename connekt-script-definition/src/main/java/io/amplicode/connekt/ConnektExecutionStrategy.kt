@@ -17,18 +17,28 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 /**
  * A class responsible for [RequestBuilder] execution.
  */
-interface ConnektExecutionStrategy {
-    fun execute(requestBuilder: RequestBuilder): Response
+interface RequestExecutionStrategy {
+    fun executeRequest(requestBuilder: RequestBuilder): Response
+}
+
+/**
+ * A class responsible for [UseCase] execution.
+ */
+interface UseCaseExecutionStrategy {
+    fun executeUseCase(useCase: UseCase)
+}
+
+interface ConnektExecutionStrategy : RequestExecutionStrategy, UseCaseExecutionStrategy {
     fun isMappingAllowed(): Boolean
 }
 
 /**
  * Makes a real HTTP request according to params described in providing [RequestBuilder] and context
  */
-class DefaultExecutionStrategy(private val context: ConnektContext) :
+internal class DefaultExecutionStrategy(private val context: ConnektContext) :
     ConnektExecutionStrategy {
 
-    override fun execute(requestBuilder: RequestBuilder): Response {
+    override fun executeRequest(requestBuilder: RequestBuilder): Response {
         val request = requestBuilder.build()
         val clientConfigurer = requestBuilder.getClientConfigurer()
         val client = context.clientContext.getClient(clientConfigurer)
@@ -37,26 +47,54 @@ class DefaultExecutionStrategy(private val context: ConnektContext) :
     }
 
     override fun isMappingAllowed() = true
+
+    override fun executeUseCase(useCase: UseCase) {
+        val effectiveUseCaseName = useCase.name ?: "Unnamed"
+        context.printer.println("Running useCase: $effectiveUseCaseName")
+        val useCaseBuilder = UseCaseBuilderImpl(context, this)
+        useCase.perform(useCaseBuilder)
+    }
 }
 
 /**
  * Does not make a real HTTP request but builds a `curl` command instead
  */
-class CurlExecutionStrategy(private val context: ConnektContext) :
+internal class CurlExecutionStrategy(private val context: ConnektContext) :
     ConnektExecutionStrategy {
 
-    override fun execute(requestBuilder: RequestBuilder): Response {
+    override fun executeRequest(requestBuilder: RequestBuilder): Response {
+        return CurlRequestExecutionStrategy(
+            context,
+            simpleCurlInterceptor { command -> context.printer.println(command) }
+        ).executeRequest(requestBuilder)
+    }
+
+    override fun isMappingAllowed() = false
+
+    override fun executeUseCase(useCase: UseCase) {
+        val useCaseBuilder = UseCaseBuilderImpl(
+            context,
+            CurlRequestExecutionStrategy(
+                context,
+                simpleCurlInterceptor { command ->
+                    context.printer.println("$command;")
+                }
+            )
+        )
+        useCase.perform(useCaseBuilder)
+    }
+}
+
+private class CurlRequestExecutionStrategy(
+    private val context: ConnektContext,
+    private val curlInterceptor: CurlInterceptor
+) : RequestExecutionStrategy {
+
+    override fun executeRequest(requestBuilder: RequestBuilder): Response {
         val request = requestBuilder.build()
         val client = context.clientContext.getClient {
             // Log `curl` command
-            addInterceptor(
-                CurlInterceptor(
-                object : Logger {
-                    override fun log(message: String) {
-                        context.printer.println(message)
-                    }
-                }
-            ))
+            addInterceptor(curlInterceptor)
 
             // Return a fake response to prevent a real http call
             addInterceptor {
@@ -72,6 +110,10 @@ class CurlExecutionStrategy(private val context: ConnektContext) :
 
         return client.newCall(request).execute()
     }
-
-    override fun isMappingAllowed() = false
 }
+
+private fun simpleCurlInterceptor(doLog: (String) -> Unit) = CurlInterceptor(
+    object : Logger {
+        override fun log(message: String) = doLog(message)
+    }
+)

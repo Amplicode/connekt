@@ -52,7 +52,7 @@ private fun RequestBody.toOkHttpBody(contentType: MediaType? = null): okhttp3.Re
 }
 
 @ConnektDsl
-open class RequestBuilder(
+class RequestBuilder(
     private val method: String,
     private val path: String,
     private val context: ConnektContext?
@@ -238,12 +238,3 @@ open class RequestBuilder(
 }
 
 typealias RequestBuilderConfigurer = Request.Builder.() -> Unit
-
-class GetBuilder(path: String, context: ConnektContext) : RequestBuilder("GET", path, context)
-class PostBuilder(path: String, context: ConnektContext) : RequestBuilder("POST", path, context)
-class PutBuilder(path: String, context: ConnektContext) : RequestBuilder("PUT", path, context)
-class OptionsBuilder(path: String, context: ConnektContext) : RequestBuilder("OPTIONS", path, context)
-class PatchBuilder(path: String, context: ConnektContext) : RequestBuilder("PATCH", path, context)
-class DeleteBuilder(path: String, context: ConnektContext) : RequestBuilder("DELETE", path, context)
-class HeadBuilder(path: String, context: ConnektContext) : RequestBuilder("HEAD", path, context)
-class TraceBuilder(path: String, context: ConnektContext) : RequestBuilder("TRACE", path, context)
