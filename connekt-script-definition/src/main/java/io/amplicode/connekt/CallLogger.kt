@@ -7,13 +7,14 @@ import okhttp3.Request
 import okio.Buffer
 import okio.GzipSource
 import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.FileOutputStream
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import kotlin.io.path.createDirectories
+import kotlin.io.path.exists
+import kotlin.io.path.outputStream
 
 class CallLogger(
     private val printer: Printer,
@@ -97,9 +98,9 @@ class CallLogger(
         val contentDisposition = headers["Content-Disposition"]
             ?.let { ContentDisposition.parseFromHeader(it) }
 
-        // Log if only this is not a file
-        val logResponseBody = contentDisposition?.filename() == null
-        if (logResponseBody) {
+        val contentDispositionFilename = contentDisposition?.filename()
+
+        if (contentDispositionFilename == null || responseBody.contentLength() <= 300) {
             printer.println("")
             val charset: Charset = contentType?.charset() ?: StandardCharsets.UTF_8
             var responseText = buffer.clone().readString(charset)
@@ -117,24 +118,28 @@ class CallLogger(
             printer.println(responseText, GREEN)
         }
 
-        val responseStorageDir = responseStorageDir?.toFile()
+        val responseStorageDir = responseStorageDir
         if (responseStorageDir != null) {
             if (!responseStorageDir.exists()) {
-                responseStorageDir.mkdirs()
+                responseStorageDir.createDirectories()
             }
 
-            val file = File(
-                responseStorageDir,
+            // Determine filename - use content disposition filename if available, otherwise use timestamp
+            val fileName = if (!contentDispositionFilename.isNullOrBlank()) {
+                contentDispositionFilename
+            } else {
                 getCurrentTimestamp() + "." + fileExtension
-            )
+            }
 
-            FileOutputStream(file).use {
-                buffer.clone().copyTo(it)
+            // Create a unique file path
+            val filePath = createFileStorePath(responseStorageDir, fileName)
+            filePath.outputStream().use { outputStream ->
+                buffer.clone().copyTo(outputStream)
             }
 
             printer.println("")
             printer.println("Response file saved.", GREEN)
-            printer.println("> file://$file", GREEN)
+            printer.println("> file://${filePath.toFile()}", GREEN)
         }
     }
 
@@ -154,6 +159,27 @@ class CallLogger(
         Protocol.HTTP_1_1 -> "HTTP/1.1"
         Protocol.HTTP_2, Protocol.H2_PRIOR_KNOWLEDGE -> "HTTP/2"
         else -> protocol.name
+    }
+
+    private fun createFileStorePath(parentDir: Path, originalFileName: String): Path {
+        var counter = 0
+        var fileName = originalFileName
+        var filePath = parentDir.resolve(fileName)
+
+        while (filePath.toFile().exists()) {
+            counter++
+            val lastDotIndex = originalFileName.lastIndexOf('.')
+            if (lastDotIndex != -1) {
+                val name = originalFileName.substring(0, lastDotIndex)
+                val extension = originalFileName.substring(lastDotIndex)
+                fileName = "$name-$counter$extension"
+            } else {
+                fileName = "$originalFileName-$counter"
+            }
+            filePath = parentDir.resolve(fileName)
+        }
+
+        return filePath
     }
 }
 
