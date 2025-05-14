@@ -13,7 +13,7 @@ import io.amplicode.connekt.dsl.UseCaseBuilder
 import okhttp3.Response
 import kotlin.reflect.KProperty
 
-internal fun ConnektBuilder(context: ConnektContext): ConnektBuilder =
+fun ConnektBuilder(context: ConnektContext): ConnektBuilder =
     ConnektBuilderImpl(context)
 
 internal class ConnektBuilderImpl(

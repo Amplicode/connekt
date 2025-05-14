@@ -35,7 +35,7 @@ interface ConnektExecutionStrategy : RequestExecutionStrategy, UseCaseExecutionS
 /**
  * Makes a real HTTP request according to params described in providing [RequestBuilder] and context
  */
-internal class DefaultExecutionStrategy(private val context: ConnektContext) :
+class DefaultExecutionStrategy(private val context: ConnektContext) :
     ConnektExecutionStrategy {
 
     override fun executeRequest(requestBuilder: RequestBuilder): Response {
@@ -59,7 +59,7 @@ internal class DefaultExecutionStrategy(private val context: ConnektContext) :
 /**
  * Does not make a real HTTP request but builds a `curl` command instead
  */
-internal class CurlExecutionStrategy(private val context: ConnektContext) :
+class CurlExecutionStrategy(private val context: ConnektContext) :
     ConnektExecutionStrategy {
 
     override fun executeRequest(requestBuilder: RequestBuilder): Response {
