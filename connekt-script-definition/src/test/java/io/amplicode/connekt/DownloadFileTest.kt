@@ -1,10 +1,12 @@
 package io.amplicode.connekt
 
+import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.dsl.GET
 import io.amplicode.connekt.test.utils.components.testConnektContext
 import io.amplicode.connekt.test.utils.runScript
 import io.amplicode.connekt.test.utils.server.TestServer
 import java.nio.file.Files
+import java.nio.file.Path
 import kotlin.io.path.createTempDirectory
 import kotlin.io.path.readText
 import kotlin.streams.asSequence
@@ -16,20 +18,16 @@ class DownloadFileTest(server: TestServer) : TestWithServer(server) {
 
     @Test
     fun `download file`() {
-        val tempDirectory = createTempDirectory("connekt-upload-file-test")
+        val (responseFilesDir, context) = TestEnvironment()
 
-        runScript(
-            context = testConnektContext(
-                responseStorageDir = tempDirectory,
-            )
-        ) {
+        runScript(context = context) {
             GET("$host/download") {
                 queryParam("filename", "my-file.txt")
                 queryParam("length", 500)
             }
         }
 
-        val files = Files.list(tempDirectory)
+        val files = Files.list(responseFilesDir)
             .asSequence()
             .toList()
 
@@ -42,15 +40,12 @@ class DownloadFileTest(server: TestServer) : TestWithServer(server) {
 
     @Test
     fun `test unique file names`() {
-        val tempDirectory = createTempDirectory("connekt-unique-filename-test")
+        val responseFilesDir = createTempDirectory("connekt-file-test")
 
         // Download the same file multiple times
         repeat(3) {
-            runScript(
-                context = testConnektContext(
-                    responseStorageDir = tempDirectory,
-                )
-            ) {
+            val (_, context) = TestEnvironment(responseFilesDir)
+            runScript(context = context) {
                 GET("$host/download") {
                     queryParam("filename", "same-file.txt")
                     queryParam("length", 100)
@@ -59,7 +54,7 @@ class DownloadFileTest(server: TestServer) : TestWithServer(server) {
         }
 
         // Check that we have 3 files with unique names
-        val files = Files.list(tempDirectory)
+        val files = Files.list(responseFilesDir)
             .asSequence()
             .toList()
 
@@ -87,4 +82,31 @@ class DownloadFileTest(server: TestServer) : TestWithServer(server) {
             )
         }
     }
+
+    @Test
+    fun `test store filename`() {
+        val (responseFilesDir, context) = TestEnvironment()
+
+        runScript(context = context) {
+            GET("$host/download") {
+                queryParam("filename", "my-file.zip")
+                queryParam("length", 200)
+            }
+        }
+
+        val responseFile= Files.list(responseFilesDir)
+            .asSequence()
+            .toList()
+            .single()
+
+        assertEquals(
+            "my-file.zip",
+            responseFile.fileName.toString()
+        )
+    }
+
+    private data class TestEnvironment(
+        val responseFilesDir: Path = createTempDirectory("connekt-file-test"),
+        val context: ConnektContext = testConnektContext(responseStorageDir = responseFilesDir)
+    )
 }

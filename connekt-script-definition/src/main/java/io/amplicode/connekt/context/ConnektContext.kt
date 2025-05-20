@@ -1,10 +1,9 @@
 package io.amplicode.connekt.context
 
-import io.amplicode.connekt.CallLogger
+import io.amplicode.connekt.CallHandler
 import io.amplicode.connekt.Printer
 import io.amplicode.connekt.SystemOutPrinter
 import org.mapdb.DB
-import org.mapdb.Serializer
 import java.nio.file.Path
 import kotlin.io.path.Path
 
@@ -57,13 +56,13 @@ fun createConnektContext(
     printer: Printer = SystemOutPrinter,
     responseStorageDir: Path? = defaultDownloadsDir,
 ): ConnektContext {
-    val callLogger = CallLogger(printer, responseStorageDir)
+    val callHandler = CallHandler(printer, responseStorageDir)
     return ConnektContext(
         environmentStore,
         VariablesStore(db),
         cookiesContext,
         ResponseValuesContext(db),
-        ClientContextImpl(callLogger),
+        ClientContextImpl(callHandler),
         printer
     ).onClose {
         db.close()

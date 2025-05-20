@@ -51,6 +51,7 @@ private fun RequestBody.toOkHttpBody(contentType: MediaType? = null): okhttp3.Re
     }
 }
 
+// TODO extract interface
 @ConnektDsl
 class RequestBuilder(
     private val method: String,

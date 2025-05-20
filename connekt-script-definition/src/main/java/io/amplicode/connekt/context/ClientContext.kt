@@ -1,7 +1,6 @@
 package io.amplicode.connekt.context
 
-import io.amplicode.connekt.CallLogger
-import io.amplicode.connekt.Printer
+import io.amplicode.connekt.CallHandler
 import okhttp3.OkHttpClient
 import java.io.Closeable
 import java.util.concurrent.TimeUnit
@@ -12,7 +11,7 @@ interface ClientContext : Closeable {
 }
 
 class ClientContextImpl(
-    callLogger: CallLogger,
+    callHandler: CallHandler,
     override var globalConfigurer: ClientConfigurer = NoopClientConfigurer
 ) : ClientContext {
 
@@ -21,7 +20,7 @@ class ClientContextImpl(
     private val defaultClient = OkHttpClient.Builder()
         .readTimeout(1, TimeUnit.MINUTES)
         .writeTimeout(1, TimeUnit.MINUTES)
-        .addNetworkInterceptor(callLogger)
+        .addNetworkInterceptor(callHandler)
         .buildAndRegister()
 
     override fun getClient(configure: ClientConfigurer): OkHttpClient {
