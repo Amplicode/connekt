@@ -1,39 +1,37 @@
 package io.amplicode.connekt.test.utils.components
 
 import io.amplicode.connekt.BaseNonColorPrinter
+import io.amplicode.connekt.ConnektInterceptor
 import io.amplicode.connekt.Printer
 import io.amplicode.connekt.SystemOutPrinter
-import io.amplicode.connekt.context.ConnektContext
-import io.amplicode.connekt.context.ConnektLifeCycleCallbacks
-import io.amplicode.connekt.context.ConnektLifeCycleCallbacksImpl
-import io.amplicode.connekt.context.CookiesContext
-import io.amplicode.connekt.context.createConnektContext
-import io.amplicode.connekt.context.EnvironmentStore
-import io.amplicode.connekt.context.NoopEnvironmentStore
-import io.amplicode.connekt.context.NoopCookiesContext
-import io.amplicode.connekt.context.onClose
-import org.mapdb.DB
-import org.mapdb.DBMaker
-import java.io.File
+import io.amplicode.connekt.context.*
+import io.amplicode.connekt.context.InMemoryPersistenceStore
 import java.nio.file.Path
 
 fun testConnektContext(
-    db: DB = DBMaker.memoryDB().make(),
+    persistenceStore: PersistenceStore = InMemoryPersistenceStore(),
     environmentStore: EnvironmentStore = NoopEnvironmentStore,
     cookiesContextFactory: (ConnektLifeCycleCallbacks) -> CookiesContext = { NoopCookiesContext },
     printer: Printer = TestPrinter(),
     responseStorageDir: Path? = null
 ): ConnektContext {
     val lifeCycleCallbacksImpl = ConnektLifeCycleCallbacksImpl()
-    return createConnektContext(
-        db,
+    val context = createConnektContext(
+        persistenceStore,
         environmentStore,
         cookiesContextFactory(lifeCycleCallbacksImpl),
-        printer,
-        responseStorageDir
+        ClientContextImpl(
+            ConnektInterceptor(
+                printer,
+                responseStorageDir
+            )
+        ),
+        printer
     ).onClose {
         lifeCycleCallbacksImpl.fireClosed()
     }
+
+    return context
 }
 
 class TestPrinter : Printer {

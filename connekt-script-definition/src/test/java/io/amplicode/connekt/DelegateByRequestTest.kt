@@ -1,7 +1,7 @@
 package io.amplicode.connekt
 
 import io.amplicode.connekt.dsl.GET
-import io.amplicode.connekt.test.utils.components.TempFileDbProvider
+import io.amplicode.connekt.test.utils.components.TemporaryPersistenceStoreProvider
 import io.amplicode.connekt.test.utils.components.testConnektContext
 import io.amplicode.connekt.test.utils.runScript
 import io.amplicode.connekt.test.utils.server.TestServer
@@ -54,7 +54,7 @@ class DelegateByRequestTest(server: TestServer) : TestWithServer(server) {
             Connection: keep-alive
 
             bar
-            
+
         """.trimIndent(),
             output
         )
@@ -62,14 +62,14 @@ class DelegateByRequestTest(server: TestServer) : TestWithServer(server) {
 
     @Test
     fun `test caching of value delegated by request`() {
-        val dbProvider = TempFileDbProvider()
+        val dbProvider = TemporaryPersistenceStoreProvider()
 
         // Run the script twice and make sure `counterResponse`
-        // is not overwritten on second run
+        // is not overwritten on the second run
         repeat(5) { timeNumber ->
             runScript(
                 requestNumber = 1,
-                context = testConnektContext(db = dbProvider.getDb())
+                context = testConnektContext(persistenceStore = dbProvider.getPersistenceStore())
             ) {
                 val counterResponse by incCounterRequest("delegator-caching-test")
                     .thenBodyString()
@@ -85,11 +85,13 @@ class DelegateByRequestTest(server: TestServer) : TestWithServer(server) {
     @Test
     fun `check delegated variable overwrite`() {
         val counterKey = uuid()
-        val dbProvider = TempFileDbProvider()
+        val dbProvider = TemporaryPersistenceStoreProvider()
 
         println("1st run")
         runScript(
-            context = testConnektContext(dbProvider.getDb())
+            context = testConnektContext(
+                persistenceStore = dbProvider.getPersistenceStore()
+            )
         ) {
             // 1
             val request = incCounterRequest(counterKey).thenBodyInt()
@@ -101,11 +103,11 @@ class DelegateByRequestTest(server: TestServer) : TestWithServer(server) {
             assertEquals(1, counterVar)
         }
 
-        // Run delegated request directly to trigger the variable update
+        // Run a delegated request directly to trigger the variable update
         println("2nd run")
         runScript(
             requestNumber = 0,
-            context = testConnektContext(dbProvider.getDb())
+            context = testConnektContext(persistenceStore = dbProvider.getPersistenceStore())
         ) {
             val counterVar by incCounterRequest(counterKey).thenBodyInt()
             // Stays 1 before execution fase
@@ -114,7 +116,7 @@ class DelegateByRequestTest(server: TestServer) : TestWithServer(server) {
 
         println("3d run")
         runScript(
-            context = testConnektContext(dbProvider.getDb())
+            context = testConnektContext(persistenceStore = dbProvider.getPersistenceStore())
         ) {
             val counterVar by incCounterRequest(counterKey).thenBodyInt()
             // Should be updated to 2 due before execution fase

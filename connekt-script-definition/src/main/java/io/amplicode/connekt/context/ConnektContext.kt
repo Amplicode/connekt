@@ -1,21 +1,17 @@
 package io.amplicode.connekt.context
 
-import io.amplicode.connekt.CallHandler
 import io.amplicode.connekt.Printer
 import io.amplicode.connekt.SystemOutPrinter
-import org.mapdb.DB
-import java.nio.file.Path
-import kotlin.io.path.Path
 
 class ConnektContext(
     val env: EnvironmentStore,
     val vars: VariablesStore,
     val cookiesContext: CookiesContext,
-    val responseValuesContext: ResponseValuesContext,
     val clientContext: ClientContext,
     val printer: Printer = SystemOutPrinter,
     val jsonContext: JsonContext = JsonContext(),
-    val requestsContext: RequestsContext = RequestsContext(),
+    val executionContext: ExecutionContext = ExecutionContext(),
+    val persistenceStore: PersistenceStore = InMemoryPersistenceStore(),
 ) : AutoCloseable {
 
     private val listeners: MutableList<Listener> = mutableListOf()
@@ -50,25 +46,22 @@ fun ConnektContext.onClose(operation: () -> Unit): ConnektContext {
 }
 
 fun createConnektContext(
-    db: DB,
+    persistenceStore: PersistenceStore,
     environmentStore: EnvironmentStore,
     cookiesContext: CookiesContext,
-    printer: Printer = SystemOutPrinter,
-    responseStorageDir: Path? = defaultDownloadsDir,
+    clientContext: ClientContext,
+    printer: Printer,
 ): ConnektContext {
-    val callHandler = CallHandler(printer, responseStorageDir)
     return ConnektContext(
         environmentStore,
-        VariablesStore(db),
+        VariablesStore(persistenceStore),
         cookiesContext,
-        ResponseValuesContext(db),
-        ClientContextImpl(callHandler),
-        printer
+        clientContext,
+        printer,
+        jsonContext = JsonContext(),
+        executionContext = ExecutionContext(),
+        persistenceStore = persistenceStore
     ).onClose {
-        db.close()
+        persistenceStore.close()
     }
 }
-
-private val defaultDownloadsDir = Path(System.getProperty("user.home"))
-    .resolve(".connekt")
-    .resolve("response")

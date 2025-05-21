@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
-import org.eclipse.collections.impl.map.mutable.ConcurrentHashMap
 import java.io.Closeable
 import java.io.Serializable
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 
 interface CookiesContext {
     val cookieJar: CookieJar

@@ -24,7 +24,7 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.outputStream
 
-class CallHandler(
+class ConnektInterceptor(
     private val printer: Printer,
     private val responseStorageDir: Path?
 ) : Interceptor {

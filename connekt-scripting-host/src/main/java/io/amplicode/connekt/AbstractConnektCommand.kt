@@ -29,12 +29,16 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
         .file(mustExist = true, canBeDir = false, mustBeReadable = true)
 
     val storageFile by option(help = "Storage file")
-        .path(mustExist = false, canBeDir = false, mustBeReadable = true)
-        .default(connektHome.resolve("connekt-global-env.db"))
+        .path(mustExist = false, canBeDir = true, canBeFile = false, mustBeReadable = true)
+        .default(connektHome.resolve("storage"))
 
     val cookiesFile by option(help = "Cookies file")
         .path(mustExist = false, canBeDir = false, mustBeReadable = true)
         .default(connektHome.resolve("cookies.db"))
+
+    val responseDir by option(help = "Responses directory")
+        .path(mustExist = false, canBeDir = true, canBeFile = false, mustBeReadable = true)
+        .default(connektHome.resolve("response"))
 
     val envName by option(help = "Environment name")
 

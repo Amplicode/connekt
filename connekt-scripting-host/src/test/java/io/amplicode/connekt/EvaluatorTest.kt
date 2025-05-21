@@ -1,5 +1,6 @@
 package io.amplicode.connekt
 
+import io.amplicode.connekt.context.ClientContextImpl
 import io.amplicode.connekt.context.createConnektContext
 import io.amplicode.connekt.context.NoEnvironmentPropertyException
 import io.amplicode.connekt.context.NoopEnvironmentStore
@@ -10,7 +11,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
-import org.mapdb.DBMaker
+import io.amplicode.connekt.context.InMemoryPersistenceStore
 import kotlin.script.experimental.api.EvaluationResult
 import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.isError
@@ -133,11 +134,14 @@ class EvaluatorTest {
         @Language("kotlin") scriptText: String,
         requestNumber: Int? = null
     ): ResultWithDiagnostics<EvaluationResult> {
-        val db = DBMaker.memoryDB().make()
+        val persistenceStore = InMemoryPersistenceStore()
+        val printer = SystemOutPrinter
         val context = createConnektContext(
-            db,
+            persistenceStore,
             NoopEnvironmentStore,
             NoopCookiesContext,
+            ClientContextImpl(ConnektInterceptor(printer, null)),
+            printer
         )
 
         context.use {

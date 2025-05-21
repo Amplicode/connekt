@@ -94,7 +94,7 @@ class CurlConverterTest(testServer: TestServer) : TestWithServer(testServer) {
 
     private fun ConnektContext.curlRequest(i: Int) = apply {
         val context = this
-        requestsContext.apply {
+        executionContext.apply {
             registerExecutionStrategyForRequest(i, CurlExecutionStrategy(context))
         }
     }

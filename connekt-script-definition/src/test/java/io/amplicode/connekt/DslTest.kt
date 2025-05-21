@@ -14,12 +14,12 @@ import io.amplicode.connekt.test.utils.components.InMemoryEnvironmentStore
 import io.amplicode.connekt.test.utils.components.testConnektContext
 import io.amplicode.connekt.test.utils.extractBodyString
 import io.amplicode.connekt.test.utils.runScript
+import io.amplicode.connekt.context.InMemoryPersistenceStore
 import io.amplicode.connekt.test.utils.server.TestServer
 import io.ktor.serialization.kotlinx.json.*
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertThrows
-import org.mapdb.DBMaker
 import org.opentest4j.AssertionFailedError
 import kotlin.io.path.createTempFile
 import kotlin.io.path.writeText
@@ -30,8 +30,8 @@ class DslTest(server: TestServer) : TestWithServer(server) {
 
     @Test
     fun simpleTest() {
-        val db = DBMaker.memoryDB().make()
-        val varStore = VariablesStore(db)
+        val persistenceStore = InMemoryPersistenceStore()
+        val varStore = VariablesStore(persistenceStore)
 
         val oneAsStr by varStore.string()
         oneAsStr.set("one")

@@ -8,7 +8,7 @@ import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.context.DelegateProvider
 import io.amplicode.connekt.dsl.ConnektBuilder
 import io.amplicode.connekt.dsl.RequestBuilder
-import io.amplicode.connekt.dsl.RequestDelegate
+import io.amplicode.connekt.dsl.ValueDelegate
 import io.amplicode.connekt.dsl.UseCaseBuilder
 import okhttp3.Response
 import kotlin.reflect.KProperty
@@ -21,26 +21,20 @@ internal class ConnektBuilderImpl(
 ) : ConnektBuilder {
     override val env = context.env
     override val vars = context.vars
-
-    override fun <T> variable(): DelegateProvider<T> {
-        return DelegateProvider(context.responseValuesContext.values)
-    }
+    override fun <T> variable(): DelegateProvider<T> = vars.obj()
 
     override fun configureClient(configure: ClientConfigurer) {
         context.clientContext.globalConfigurer = configure
     }
 
-    override fun useCase(
-        name: String?,
-        runUseCase: UseCaseBuilder.() -> Unit
-    ) {
+    override fun useCase(name: String?, runUseCase: UseCaseBuilder.() -> Unit) {
         val useCase = object : UseCase {
             override val name: String? = name
             override fun perform(useCaseBuilder: UseCaseBuilder) =
                 useCaseBuilder.runUseCase()
         }
         val useCaseExecutable = UseCaseExecutable(context, useCase)
-        context.requestsContext.registerExecutable(useCaseExecutable)
+        context.executionContext.registerExecutable(useCaseExecutable)
     }
 
     override fun Response.jsonPath(): ReadContext {
@@ -62,7 +56,7 @@ internal class ConnektBuilderImpl(
         val requestBuilderProvider = RequestBuilderProvider {
             RequestBuilder(method, path, context).apply(configure)
         }
-        val requestsContext = context.requestsContext
+        val requestsContext = context.executionContext
         val requestHolder = RequestHolder(requestBuilderProvider, context)
         requestsContext.registerExecutable(requestHolder)
         return requestHolder
@@ -72,11 +66,37 @@ internal class ConnektBuilderImpl(
         @Suppress("unused")
         receiver: Any?,
         prop: KProperty<*>
-    ): RequestDelegate<R> = PersistentRequestDelegate(
-        context,
-        this,
-        prop.name
-    )
+    ): ValueDelegate<R> {
+        val storedValue = StoredValueImpl<R>(prop, this)
+        return RequestValueDelegate(
+            context,
+            this,
+            storedValue
+        )
+    }
+
+    inner class StoredValueImpl<R>(
+        prop: KProperty<*>,
+        requestHolder: ConnektRequestExecutable<R>
+    ) : RequestValueDelegate.StoredValue<R> {
+
+        private val key = prop.name
+        private val storeMap = context.persistenceStore
+            .getMap("StoredValueImpl")
+
+        override var value: R?
+            get() = storeMap[key] as R?
+            set(value) {
+                storeMap[key] = value
+            }
+
+        init {
+            // update stored value on response received
+            requestHolder.onResultObtained<R> {
+                value = it
+            }
+        }
+    }
 }
 
 private class UseCaseExecutable(
@@ -84,7 +104,7 @@ private class UseCaseExecutable(
     private val useCase: UseCase
 ) : Executable<Unit>() {
     override fun execute() {
-        val executionStrategy = context.requestsContext.getExecutionStrategy(this, context)
+        val executionStrategy = context.executionContext.getExecutionStrategy(this, context)
         executionStrategy.executeUseCase(useCase)
     }
 }
@@ -92,41 +112,4 @@ private class UseCaseExecutable(
 interface UseCase {
     val name: String?
     fun perform(useCaseBuilder: UseCaseBuilder)
-}
-
-class PersistentRequestDelegate<T>(
-    private val connektContext: ConnektContext,
-    private val requestHolder: ConnektRequestExecutable<T>,
-    private val storageKey: String
-) : RequestDelegate<T> {
-
-    init {
-        requestHolder.onResultObtained {
-            connektContext.responseValuesContext.values[storageKey] = it
-        }
-    }
-
-    override operator fun getValue(
-        @Suppress("unused") thisRef: Nothing?,
-        @Suppress("unused") property: KProperty<*>
-    ): T {
-        return getValueImpl()
-    }
-
-    override operator fun getValue(
-        @Suppress("unused") receiver: Any?,
-        @Suppress("unused") prop: KProperty<*>
-    ): T {
-        return getValueImpl()
-    }
-
-    private fun getValueImpl(): T {
-        val storedValue = connektContext.responseValuesContext.values[storageKey]
-        if (storedValue == null) {
-            connektContext.printer.println("Initializing value for property `$storageKey`")
-            return requestHolder.execute()
-        }
-
-        return connektContext.responseValuesContext.values[storageKey] as T
-    }
 }

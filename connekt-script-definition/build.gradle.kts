@@ -29,7 +29,6 @@ dependencies {
 
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.1")
-    api("org.mapdb:mapdb:3.1.0")
     implementation(libs.kotlinx.serialization.json)
 
     api("com.github.mrmike:ok2curl:0.8.0")

@@ -38,17 +38,17 @@ interface ConnektBuilder : RequestRegistrator<RequestHolder> {
         @Suppress("unused")
         receiver: Any?,
         prop: KProperty<*>
-    ): RequestDelegate<R>
+    ): ValueDelegate<R>
 }
 
-interface RequestDelegate<T> {
+interface ValueDelegate<T> {
     operator fun getValue(
         @Suppress("unused") thisRef: Nothing?,
         @Suppress("unused") property: KProperty<*>
     ): T
 
     operator fun getValue(
-        @Suppress("unused") receiver: Any?,
-        @Suppress("unused") prop: KProperty<*>
+        @Suppress("unused") thisRef: Any?,
+        @Suppress("unused") property: KProperty<*>
     ): T
 }

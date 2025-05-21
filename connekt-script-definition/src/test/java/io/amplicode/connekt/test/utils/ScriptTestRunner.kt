@@ -17,7 +17,7 @@ fun runScript(
     val connektBuilder = ConnektBuilder(context)
     connektBuilder.configureBuilder()
     context.use {
-        it.requestsContext.execute(requestNumber)
+        it.executionContext.execute(requestNumber)
     }
     return (context.printer as TestPrinter).stringPrinter.asString()
 }

@@ -1,7 +1,8 @@
 package io.amplicode.connekt
 
 import io.amplicode.connekt.context.*
-import org.mapdb.DBMaker
+import io.amplicode.connekt.context.FilePersistenceStore
+import io.amplicode.connekt.context.InMemoryPersistenceStore
 import kotlin.io.path.createFile
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.notExists
@@ -14,15 +15,10 @@ class DefaultContextFactory : ConnektContextFactory {
     override fun createContext(command: AbstractConnektCommand): ConnektContext {
         val storageFile = command.storageFile
 
-        // DBMaker can't create a file in a non-existent folder
-        // so ensure it exists
+        // Ensure the parent directory exists
         storageFile.createParentDirectories()
 
-        val db = DBMaker.fileDB(storageFile.toFile())
-            .closeOnJvmShutdown()
-            .fileChannelEnable()
-            .checksumHeaderBypass()
-            .make()
+        val persistenceStore = FilePersistenceStore(storageFile)
 
         val cookiesFile = command.cookiesFile
         if (cookiesFile.notExists()) {
@@ -31,10 +27,14 @@ class DefaultContextFactory : ConnektContextFactory {
 
         val connektLifeCycleCallbacks = ConnektLifeCycleCallbacksImpl()
         val cookiesContext = CookiesContextImpl(cookiesFile, connektLifeCycleCallbacks)
+
+        val printer = SystemOutPrinter
         val context = createConnektContext(
-            db,
+            persistenceStore,
             createEnvStore(command),
-            cookiesContext
+            cookiesContext,
+            ClientContextImpl(ConnektInterceptor(printer, command.responseDir)),
+            printer
         ).onClose {
             connektLifeCycleCallbacks.fireClosed()
         }
@@ -49,7 +49,12 @@ class DefaultContextFactory : ConnektContextFactory {
         if (envName != null) {
             val envFile = command.envFile ?: defaultEnvFile(command)
             if (envFile?.exists() == true) {
-                return DelegateEnvironmentStore(listOf(overriddenValues, FileEnvironmentStore(envFile, envName)))
+                return CompoundEnvironmentStore(
+                    listOf(
+                        overriddenValues,
+                        FileEnvironmentStore(envFile, envName)
+                    )
+                )
             }
         }
 
@@ -64,11 +69,14 @@ class DefaultContextFactory : ConnektContextFactory {
 
 class CompileOnlyContextFactory : ConnektContextFactory {
     override fun createContext(command: AbstractConnektCommand): ConnektContext {
-        val db = DBMaker.memoryDB().make()
+        val printer = SystemOutPrinter
+
         return createConnektContext(
-            db,
+            InMemoryPersistenceStore(),
             NoopEnvironmentStore,
-            NoopCookiesContext
+            NoopCookiesContext,
+            ClientContextImpl(ConnektInterceptor(printer, null)),
+            printer
         )
     }
 }

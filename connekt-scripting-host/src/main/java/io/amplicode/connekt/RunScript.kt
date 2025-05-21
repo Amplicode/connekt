@@ -70,7 +70,7 @@ fun runScript(
         }
 
         result.returnValueAsError == null && !result.isError() -> {
-            context.requestsContext.execute(options.requestNumber)
+            context.executionContext.execute(options.requestNumber)
         }
     }
 

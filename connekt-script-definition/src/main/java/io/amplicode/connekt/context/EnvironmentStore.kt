@@ -19,7 +19,7 @@ interface EnvironmentStore {
     operator fun contains(property: KProperty<*>): Boolean
 }
 
-class DelegateEnvironmentStore(
+class CompoundEnvironmentStore(
     private val stores: List<EnvironmentStore>
 ) : EnvironmentStore {
     override fun <T> getValue(receiver: Any?, property: KProperty<*>): T {

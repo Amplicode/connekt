@@ -5,14 +5,11 @@
 
 package io.amplicode.connekt.context
 
-import org.mapdb.DB
-import org.mapdb.Serializer
 import kotlin.reflect.KProperty
 
 class VariablesStore(private val values: MutableMap<String, Any?>) {
     fun string() = DelegateProvider<String>(values)
     fun int() = DelegateProvider<Int>(values)
-
     fun <T> obj() = DelegateProvider<T>(values)
 }
 
@@ -51,11 +48,7 @@ class Variable<T>(
         "undefined"
 }
 
-fun VariablesStore(db: DB): VariablesStore {
-    val values: MutableMap<String, Any?> = db.hashMap(
-        "values",
-        Serializer.STRING,
-        Serializer.JAVA
-    ).createOrOpen()
+fun VariablesStore(persistenceStore: PersistenceStore): VariablesStore {
+    val values: MutableMap<String, Any?> = persistenceStore.getMap("variables")
     return VariablesStore(values)
 }

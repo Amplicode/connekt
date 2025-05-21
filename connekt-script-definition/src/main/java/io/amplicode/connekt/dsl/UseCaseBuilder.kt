@@ -6,29 +6,26 @@ import kotlin.reflect.KProperty
 
 @ConnektDsl
 interface UseCaseBuilder : RequestRegistrator<Response> {
+
     operator fun <T> T.provideDelegate(
         @Suppress("unused") receiver: Any?,
         @Suppress("unused") prop: KProperty<*>
-    ): UseCaseRequestDelegate<T>
+    ): UseCaseValueDelegate<T>
 
     infix fun <T> Response.then(handle: Response.() -> T): T = run(handle)
     fun Response.jsonPath(): ReadContext
 }
 
-class UseCaseRequestDelegate<T>(private val value: T) : RequestDelegate<T> {
+class UseCaseValueDelegate<T>(private val value: T) : ValueDelegate<T> {
     override operator fun getValue(
         @Suppress("unused") thisRef: Nothing?,
         @Suppress("unused") property: KProperty<*>
-    ): T {
-        return getValueImpl()
-    }
+    ): T = getValueImpl()
 
     override operator fun getValue(
-        @Suppress("unused") receiver: Any?,
-        @Suppress("unused") prop: KProperty<*>
-    ): T {
-        return getValueImpl()
-    }
+        @Suppress("unused") thisRef: Any?,
+        @Suppress("unused") property: KProperty<*>
+    ): T = getValueImpl()
 
     private fun getValueImpl(): T = value
 }

@@ -4,7 +4,7 @@ import com.jayway.jsonpath.ReadContext
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.dsl.RequestBuilder
 import io.amplicode.connekt.dsl.UseCaseBuilder
-import io.amplicode.connekt.dsl.UseCaseRequestDelegate
+import io.amplicode.connekt.dsl.UseCaseValueDelegate
 import okhttp3.Response
 import kotlin.reflect.KProperty
 
@@ -16,8 +16,8 @@ internal class UseCaseBuilderImpl(
     override operator fun <T> T.provideDelegate(
         @Suppress("unused") receiver: Any?,
         @Suppress("unused") prop: KProperty<*>
-    ): UseCaseRequestDelegate<T> {
-        return UseCaseRequestDelegate(this)
+    ): UseCaseValueDelegate<T> {
+        return UseCaseValueDelegate(this)
     }
 
     override fun Response.jsonPath(): ReadContext = context.jsonContext.getReadContext(this)

@@ -26,7 +26,7 @@ internal class ConnektCommand : AbstractConnektCommand() {
 
             if (executionMode == ExecutionMode.CURL) {
                 requireNotNull(requestIndex)
-                context.requestsContext.registerExecutionStrategyForRequest(
+                context.executionContext.registerExecutionStrategyForRequest(
                     requestIndex,
                     CurlExecutionStrategy(context)
                 )

@@ -7,7 +7,7 @@ import io.amplicode.connekt.Executable
 /**
  * Manages executables that must be runed after the script is compiled.
  */
-class RequestsContext {
+class ExecutionContext {
     private val _executables: MutableList<Executable<*>> = mutableListOf()
     private val ignoredExecutables = mutableSetOf<Executable<*>>()
     private val executionStrategies: MutableMap<Int, ConnektExecutionStrategy> = mutableMapOf()

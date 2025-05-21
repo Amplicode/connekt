@@ -38,7 +38,7 @@ class RequestHolder(
 ) : ConnektRequestExecutable<Response>() {
 
     private val executionStrategy
-        get() = context.requestsContext.getExecutionStrategy(this, context)
+        get() = context.executionContext.getExecutionStrategy(this, context)
 
     override fun doExecute(): Response {
         val requestBuilder = requestBuilderProvider.getRequestBuilder()
@@ -90,7 +90,7 @@ class MappedRequestHolder<R>(
         // Request is not yet executed
         if (response == null) {
             originRequestHolder.execute()
-            context.requestsContext.ignoreOnExecutionPhase(originRequestHolder)
+            context.executionContext.ignoreOnExecutionPhase(originRequestHolder)
         }
 
         // Expect not to be null once the request is executed
