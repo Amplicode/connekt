@@ -170,7 +170,7 @@ class ConnektInterceptor(
 
         printer.println("")
         printer.println("Response file saved.", GREEN)
-        printer.println("> file://${filePath.toFile()}", GREEN)
+        printer.println("> ${filePath.toFile()}", GREEN)
     }
 
     private fun calcResponseFilename(
