@@ -1,6 +1,9 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.dsl.ConnektBuilder
+import io.amplicode.connekt.context.createConnektContext
+import io.amplicode.connekt.context.NoEnvironmentPropertyException
+import io.amplicode.connekt.context.NoopEnvironmentStore
+import io.amplicode.connekt.context.NoopCookiesContext
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.response.*
@@ -24,15 +27,15 @@ class EvaluatorTest {
         val result = evaluate(
             """
                 val z: String by env
-                
+
                 GET("${'$'}z/hello") {
-                
+
                 }
             """.trimIndent(),
             1
         )
         val error = result.returnValueAsError?.error
-        assertIs<NoEnvironmentException>(error)
+        assertIs<NoEnvironmentPropertyException>(error)
 
         assert(!result.isError()) {
             result.reports
@@ -68,11 +71,11 @@ class EvaluatorTest {
             evaluateThrowing(
                 """
                 GET("http://localhost:$port/foo") {
-                    
+
                 }
-                
+
                 GET("http://localhost:$port/bar") {
-                
+
                 }
                 """.trimIndent(),
                 1
@@ -86,11 +89,11 @@ class EvaluatorTest {
             evaluateThrowing(
                 """
                 val fooRequest by GET("http://localhost:$port/foo") {
-                    
+
                 } then {
                     body!!.string()
                 }
-                
+
                 GET("http://localhost:$port/bar") {
                     queryParam("my-param", fooRequest)
                 }
@@ -131,18 +134,24 @@ class EvaluatorTest {
         requestNumber: Int? = null
     ): ResultWithDiagnostics<EvaluationResult> {
         val db = DBMaker.memoryDB().make()
-        val connektContext = ConnektContext(
+        val context = createConnektContext(
             db,
-            NoOpEnvironmentStore,
-            VariablesStore(db)
+            NoopEnvironmentStore,
+            NoopCookiesContext,
         )
-        val connektBuilder = ConnektBuilder(connektContext)
-        val evaluator = Evaluator(false)
-        return evaluator.evalScript(
-            connektBuilder,
-            StringScriptSource(scriptText),
-            requestNumber
-        )
+
+        context.use {
+            return runScript(
+                EvaluatorOptions(
+                    requestNumber,
+                    compileOnly = false,
+                    debugLog = false,
+                    compilationCache = false
+                ),
+                context,
+                StringScriptSource(scriptText),
+            )
+        }
     }
 
     private fun evaluateThrowing(

@@ -1,22 +1,23 @@
 package io.amplicode.connekt.test.utils
 
-import io.amplicode.connekt.RequestExecutor
+import io.amplicode.connekt.ConnektBuilder
+import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.dsl.ConnektBuilder
+import io.amplicode.connekt.test.utils.components.TestPrinter
+import io.amplicode.connekt.test.utils.components.testConnektContext
 
 /**
  * @param requestNumber request number starting from `0`
  */
 fun runScript(
     requestNumber: Int? = null,
-    connektBuilder: ConnektBuilder = createConnektBuilder(),
-    configure: ConnektBuilder.() -> Unit = { }
-) = connektBuilder.runScript(requestNumber, configure)
-
-fun ConnektBuilder.runScript(
-    requestNumber: Int? = null,
-    configure: ConnektBuilder.() -> Unit = { }
+    context: ConnektContext = testConnektContext(),
+    configureBuilder: ConnektBuilder.() -> Unit = { }
 ): String {
-    this.configure()
-    RequestExecutor.execute(this, requestNumber)
-    return (connektContext.printer as TestPrinter).stringPrinter.asString()
+    val connektBuilder = ConnektBuilder(context)
+    connektBuilder.configureBuilder()
+    context.use {
+        it.requestsContext.execute(requestNumber)
+    }
+    return (context.printer as TestPrinter).stringPrinter.asString()
 }

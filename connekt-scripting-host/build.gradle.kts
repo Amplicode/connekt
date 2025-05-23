@@ -5,11 +5,14 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    kotlin("jvm") version "2.0.21"
+    kotlin("jvm")
     application
     distribution
     `maven-publish`
 }
+
+group = "io.amplicode"
+version = "0.2.3"
 
 dependencies {
     implementation(project(":connekt-script-definition"))
@@ -52,14 +55,21 @@ tasks.register("buildConnektRunnerJar") {
     dependsOn(tasks.installDist)
 }
 
-group = "io.amplicode"
-version = "2025.1.0-SNAPSHOT"
+application {
+    mainClass = "io.amplicode.connekt.EvaluatorKt"
+}
+
+distributions {
+    main {
+        distributionBaseName.set("connekt-cli")
+    }
+}
 
 publishing {
     publications {
         create<MavenPublication>("distribution") {
             artifactId = "connekt-scripting-host"
-            version = project.version as String
+            version = (project.version as String) + "-SNAPSHOT"
             artifact(tasks.distZip)
         }
         val uploadUrl = project.findProperty("uploadUrl") as String?

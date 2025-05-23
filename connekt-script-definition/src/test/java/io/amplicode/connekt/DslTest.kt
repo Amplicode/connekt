@@ -6,23 +6,21 @@
 
 package io.amplicode.connekt
 
-import io.amplicode.connekt.dsl.ConnektBuilder
-import io.amplicode.connekt.dsl.UseCaseBuilder
-import io.amplicode.connekt.test.utils.TestServer
-import io.amplicode.connekt.test.utils.TestServerParamResolver
-import io.amplicode.connekt.test.utils.createConnektBuilder
+import io.amplicode.connekt.context.VariablesStore
+import io.amplicode.connekt.dsl.GET
+import io.amplicode.connekt.dsl.POST
+import io.amplicode.connekt.dsl.contentType
+import io.amplicode.connekt.test.utils.components.InMemoryEnvironmentStore
+import io.amplicode.connekt.test.utils.components.testConnektContext
+import io.amplicode.connekt.test.utils.extractBodyString
 import io.amplicode.connekt.test.utils.runScript
+import io.amplicode.connekt.test.utils.server.TestServer
 import io.ktor.serialization.kotlinx.json.*
-import okhttp3.Response
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
-import org.junit.jupiter.api.extension.ExtendWith
 import org.mapdb.DBMaker
 import org.opentest4j.AssertionFailedError
-import java.util.UUID
-import kotlin.collections.ArrayDeque
 import kotlin.io.path.createTempFile
 import kotlin.io.path.writeText
 import kotlin.test.*
@@ -67,11 +65,10 @@ class DslTest(server: TestServer) : TestWithServer(server) {
     @Test
     fun testEnvSyntax() {
         val envStore = InMemoryEnvironmentStore()
-        val connektBuilder = createConnektBuilder(environmentStore = envStore)
         envStore["one"] = 1
         envStore["two"] = "2"
 
-        connektBuilder.runScript {
+        runScript(context = testConnektContext(environmentStore = envStore)) {
             val one: Int by env
             val two: String by env
             GET("$host/foo?p=$one") {
@@ -79,53 +76,6 @@ class DslTest(server: TestServer) : TestWithServer(server) {
                 assertEquals("2", two)
             }
         }
-    }
-
-    @Test
-    fun testDelegatedPropertiesRequest() {
-        val output = runScript(1) {
-            val fooRequest by GET("$host/foo") then {
-                body!!.string()
-            }
-
-            GET("$host/bar") {
-                header("param-from-foo-request", fooRequest)
-            }
-        }
-
-        val hostWithoutProtocol = host.removePrefix("http://")
-        assertEquals(
-            """
-            Initializing value for property `fooRequest`
-            GET $host/foo
-            User-Agent: connekt/0.0.1 
-            Host: $hostWithoutProtocol 
-            Connection: Keep-Alive 
-            Accept-Encoding: gzip
-
-            HTTP/1.1 200 OK
-            Content-Length: 3 
-            Content-Type: text/plain; charset=UTF-8 
-            Connection: keep-alive
-
-            foo
-            GET $host/bar
-            param-from-foo-request: foo 
-            User-Agent: connekt/0.0.1 
-            Host: $hostWithoutProtocol 
-            Connection: Keep-Alive 
-            Accept-Encoding: gzip
-
-            HTTP/1.1 200 OK
-            Content-Length: 3 
-            Content-Type: text/plain; charset=UTF-8 
-            Connection: keep-alive
-
-            bar
-            
-        """.trimIndent(),
-            output
-        )
     }
 
     @Test
@@ -143,68 +93,6 @@ class DslTest(server: TestServer) : TestWithServer(server) {
             listOf("a-1", "a-2"),
             responseObject["a-header"]
         )
-    }
-
-    @Test
-    fun `test caching of value delegated by request`() {
-        val dbProvider = TempFileDbProvider()
-
-        // Run the script twice and make sure `counterResponse`
-        // is not overwritten on second run
-        repeat(5) { timeNumber ->
-            runScript(
-                requestNumber = 1,
-                connektBuilder = createConnektBuilder(dbProvider.getDb())
-            ) {
-                val counterResponse by incCounterRequest("delegator-caching-test")
-                    .thenBodyString()
-
-                GET("$host/foo") {
-                    // 1 means that the request above was called only once
-                    assertEquals("1", counterResponse)
-                }
-            }
-        }
-    }
-
-    @Test
-    fun `check delegated variable overwrite`() {
-        val counterKey = uuid()
-        val dbProvider = TempFileDbProvider()
-
-        println("1st run")
-        runScript(
-            connektBuilder = createConnektBuilder(dbProvider.getDb())
-        ) {
-            // 1
-            val request = incCounterRequest(counterKey).thenBodyInt()
-
-            val counterVar by request
-
-            assertEquals(1, counterVar)
-            counterVar
-            assertEquals(1, counterVar)
-        }
-
-        // Run delegated request directly to trigger the variable update
-        println("2nd run")
-        runScript(
-            requestNumber = 0,
-            connektBuilder = createConnektBuilder(dbProvider.getDb())
-        ) {
-            val counterVar by incCounterRequest(counterKey).thenBodyInt()
-            // Stays 1 before execution fase
-            assertEquals(1, counterVar, "Second run")
-        }
-
-        println("3d run")
-        runScript(
-            connektBuilder = createConnektBuilder(dbProvider.getDb())
-        ) {
-            val counterVar by incCounterRequest(counterKey).thenBodyInt()
-            // Should be updated to 2 due before execution fase
-            assertEquals(2, counterVar, "Third run")
-        }
     }
 
     @Test
@@ -289,18 +177,7 @@ class DslTest(server: TestServer) : TestWithServer(server) {
     }
 
     @Test
-    fun `test delegated var with then`() {
-        runScript {
-            val value by GET("$host/foo").then {
-                body?.string()
-            }
-
-            assertEquals("foo", value)
-        }
-    }
-
-    @Test
-    fun `test assertion in then {} of delegated request`() {
+    fun `test assertion in then {}`() {
         assertThrows<AssertionFailedError> {
             runScript {
                 GET("$host/foo").then {
@@ -321,26 +198,6 @@ class DslTest(server: TestServer) : TestWithServer(server) {
             }
         }
         assertEquals("foo", response)
-    }
-
-    @Test
-    fun `test by variables are not cached in flow`() {
-        runScript {
-            useCase("my-flow") {
-                val toSend = listOf(
-                    "foo", "bar", "baz"
-                )
-                toSend.forEach { payload ->
-                    val result by POST("$host/echo-body") {
-                        body(payload)
-                    }.then {
-                        body!!.string()
-                    }
-
-                    assertEquals(payload, result)
-                }
-            }
-        }
     }
 
     @Test
@@ -365,207 +222,11 @@ class DslTest(server: TestServer) : TestWithServer(server) {
     }
 
     @Test
-    fun `test run delegated request by number`() {
-        val responses = ArrayDeque<String>()
-        runScript(0) {
-            val delegatedRequest by GET("$host/echo-text") {
-                queryParam("text", 0)
-            }.then {
-                val bodyString = body!!.string()
-                responses.addFirst(bodyString)
-                bodyString
-            }
-
-            GET("$host/echo-text") {
-                queryParam("text", 1)
-            }.then {
-                responses.addFirst(body!!.string())
-            }
-        }
-
-        assertContentEquals(
-            listOf("0"),
-            responses.toList()
-        )
-    }
-
-    @Test
-    fun `run var in flow twice`() {
-        assertDoesNotThrow {
-            runScript(0) {
-                useCase("my-flow") {
-                    val request = GET("$host/foo").then { body!!.string() }
-                    request
-                    request
-                }
-            }
-        }
-    }
-
-    @Test
-    fun `cyclic delegators in flow with no then { }`() {
-        val counterKey = uuid()
-        var counterResponse: Int? = null
-
+    fun `test configure client with empty value`() {
         runScript {
-            useCase("my-flow") {
-                repeat(8) { i ->
-                    val request = POST("$host/counter/{counter}/inc") {
-                        pathParam("counter", counterKey)
-                    }
-                    val prop by request
-                }
-            }
-            GET("$host/counter/{counter}") {
-                pathParam("counter", counterKey)
-            }.then {
-                counterResponse = body!!.string().toInt()
-            }
-        }
+            configureClient {
 
-        assertEquals(counterResponse, 8)
-    }
-
-    @Test
-    fun `cyclic delegators in flow with then { }`() {
-        val counterKey = uuid()
-        var counterResponse: Int? = null
-        val executionTimes = 1
-
-        runScript {
-            useCase("my-flow") {
-                repeat(executionTimes) { i ->
-                    val request = incCounterRequest(counterKey)
-                        .thenBodyString()
-                    val prop by request
-                    prop
-                    prop
-                    prop
-                }
-            }
-            getCounterRequest(counterKey).thenBodyString {
-                counterResponse = it.toInt()
-            }
-        }
-
-        assertEquals(executionTimes, counterResponse)
-    }
-
-    @Test
-    fun `cyclic requests in flow with no then { }`() {
-        var finalCounterResponse: Int? = null
-
-        runScript {
-            val counterKey = uuid()
-            useCase("my-flow") {
-                repeat(5) { i ->
-                    POST("$host/counter/{counter}/inc") {
-                        pathParam("counter", counterKey)
-                    }
-                }
-            }
-
-            GET("$host/counter/{counter}") {
-                pathParam("counter", counterKey)
-            }.then {
-                finalCounterResponse = body?.string()?.toInt()
-            }
-        }
-
-        assertEquals(5, finalCounterResponse)
-    }
-
-    @Test
-    fun `cyclic requests in flow with then { }`() {
-        var finalCounterResponse: Int? = null
-
-        runScript {
-            val counterKey = uuid()
-            useCase("my-flow") {
-                repeat(5) { i ->
-                    incCounterRequest(counterKey).then {
-                        // just return some value
-                        i
-                    }
-                }
-            }
-
-            getCounterRequest(counterKey).then {
-                finalCounterResponse = body?.string()?.toInt()
-            }
-        }
-
-        assertEquals(5, finalCounterResponse)
-    }
-
-    @Test
-    fun `lazy vars in flow`() {
-        val counterKey = uuid()
-
-        val counterResults = mutableListOf<Int?>()
-        runScript(0) {
-            useCase("my-flow") {
-                val prop by lazy {
-                    incCounterRequest(counterKey)
-                }
-
-                getCounterRequest(counterKey, counterResults::add)
-
-                // call to trigger request
-                prop
-
-                getCounterRequest(counterKey, counterResults::add)
             }
         }
     }
-
-    private fun ConnektBuilder.getCounterRequest(counterKey: String) = GET("$host/counter/{counter}") {
-        pathParam("counter", counterKey)
-    }
-
-    private fun UseCaseBuilder.getCounterRequest(
-        counterKey: String,
-        handleValue: (Int) -> Unit = { }
-    ) = GET("$host/counter/{counter}") {
-        pathParam("counter", counterKey)
-    }.then {
-        handleValue(body!!.string().toInt())
-    }
-
-    private fun ConnektBuilder.incCounterRequest(counterKey: String): RequestHolder =
-        POST("$host/counter/{counter}/inc") {
-            pathParam("counter", counterKey)
-        }
-
-    private fun UseCaseBuilder.incCounterRequest(counterKey: String): RequestHolder =
-        POST("$host/counter/{counter}/inc") {
-            pathParam("counter", counterKey)
-        }
-}
-
-fun extractBodyString(s: String): String = s.split("\n\n")
-    .last()
-    .removeSuffix("\n")
-
-private fun uuid() = UUID.randomUUID().toString()
-
-fun RequestHolder.thenBodyString(handleString: (String) -> Unit = { }) =
-    then {
-        val bodyString = body!!.string()
-        handleString(bodyString)
-        bodyString
-    }
-
-fun RequestHolder.thenBodyInt() =
-    then { body!!.string().toInt() }
-
-class TempFileDbProvider {
-    val dbTempFile = createTempFile("connekt-test.db")
-        .toFile()
-        .also {
-            it.delete()
-            it.deleteOnExit()
-        }
-
-    fun getDb() = DBMaker.fileDB(dbTempFile).make()
 }

@@ -23,7 +23,8 @@ object ConnektConfiguration : ScriptCompilationConfiguration({
     defaultImports(
         "kotlin.script.experimental.dependencies.DependsOn",
         "kotlin.random.Random",
-        "org.apache.http.HttpHeaders"
+        "org.apache.http.HttpHeaders",
+        "io.amplicode.connekt.dsl.*"
     )
 
     displayName(

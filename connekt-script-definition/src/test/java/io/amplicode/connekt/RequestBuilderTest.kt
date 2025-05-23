@@ -1,6 +1,6 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.dsl.BaseRequestBuilder
+import io.amplicode.connekt.dsl.RequestBuilder
 import okhttp3.Request
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.Test
@@ -10,9 +10,10 @@ class RequestBuilderTest {
 
     @Test
     fun `test valid url with placeholders`() {
-        val builder = BaseRequestBuilder(
+        val builder = RequestBuilder(
             "GET",
-            "http://localhost/api/{orderId}/{bar-bar}"
+            "http://localhost/api/{orderId}/{bar-bar}",
+            null
         ).apply {
             pathParam("orderId", "102")
             pathParam("bar-bar", "2")
@@ -36,9 +37,10 @@ class RequestBuilderTest {
     @Test
     fun `test missing path param`() {
         val exception = assertThrows<MissingPathParameterException> {
-            BaseRequestBuilder(
+            RequestBuilder(
                 "GET",
-                "http://localhost/api/{foo}/{bar}/{missing-path-param}"
+                "http://localhost/api/{foo}/{bar}/{missing-path-param}",
+                null
             ).apply {
                 pathParam("foo", "1")
                 pathParam("bar", "2")

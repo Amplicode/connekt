@@ -5,100 +5,83 @@
 
 package io.amplicode.connekt
 
-import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.parameters.options.default
-import com.github.ajalt.clikt.parameters.options.defaultLazy
-import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.options.required
-import com.github.ajalt.clikt.parameters.types.boolean
-import com.github.ajalt.clikt.parameters.types.file
-import com.github.ajalt.clikt.parameters.types.int
-import io.amplicode.connekt.dsl.ConnektBuilder
-import org.mapdb.DBMaker
-import java.io.File
-import java.nio.file.Paths
-import kotlin.script.experimental.api.ScriptDiagnostic
+import com.github.ajalt.clikt.core.terminal
+import io.amplicode.connekt.context.ConnektContext
 import kotlin.script.experimental.host.FileScriptSource
+import kotlin.time.Duration
+import kotlin.time.measureTime
 
 internal class ConnektCommand : AbstractConnektCommand() {
 
     override fun run() {
-        // DBMaker can't create file in non-existent folder
-        // so ensure it exists
-        globalEnvFile.parentFile.mkdirs()
+        if (version) {
+            terminal.println(connektVersion)
+            return
+        }
 
-        val db = DBMaker.fileDB(globalEnvFile)
-            .closeOnJvmShutdown()
-            .fileChannelEnable()
-            .checksumHeaderBypass()
-            .make()
+        val script = script
+        if (script != null) {
+            val context = createContextFactory().createContext(this)
+            val requestIndex = requestNumber?.minus(1)
 
-        ConnektContext(
-            db,
-            createEnvStore(),
-            VariablesStore(db)
-        ).use { ctx ->
-            val connektBuilder = ConnektBuilder(ctx)
-            val evaluator = Evaluator(useCompilationCache)
+            if (executionMode == ExecutionMode.CURL) {
+                requireNotNull(requestIndex)
+                context.requestsContext.registerExecutionStrategyForRequest(
+                    requestIndex,
+                    CurlExecutionStrategy(context)
+                )
+            }
 
-            val res = evaluator.evalScript(
-                connektBuilder,
-                FileScriptSource(script),
-                requestNumber?.minus(1)
-            )
-
-            res.returnValueAsError
-                ?.error
-                ?.printStackTrace()
-
-            res.reports.forEach {
-                it.exception?.printStackTrace()
-                if (it.severity > ScriptDiagnostic.Severity.DEBUG) {
-                    println(" : ${it.message}" + if (it.exception == null) "" else ": ${it.exception}")
+            context.use { context ->
+                val executionDuration = measureTime {
+                    runScript(
+                        EvaluatorOptions(
+                            requestIndex,
+                            compileOnly,
+                            debugLog,
+                            compilationCache
+                        ),
+                        context,
+                        FileScriptSource(script)
+                    )
+                }
+                if (debugLog) {
+                    printExecutionTimeInfo(executionDuration, context)
                 }
             }
         }
     }
 
-    private fun createEnvStore(): EnvironmentStore {
-        val envName = envName
-        return if (envFile.exists() && !envName.isNullOrBlank())
-            FileEnvironmentStore(envFile, envName) else
-            NoOpEnvironmentStore
+    override val printHelpOnEmptyArgs: Boolean = true
+
+    private fun printExecutionTimeInfo(executionDuration: Duration, context: ConnektContext) {
+        val durationString = executionDuration.toComponents { minutes, seconds, nanoseconds ->
+            sequence {
+                if (minutes > 0) {
+                    yield("${minutes}m")
+                }
+                if (minutes > 0 || seconds > 0) {
+                    yield("${seconds}s")
+                }
+                yield("${nanoseconds / 1_000_000}ms")
+            }.joinToString(" ")
+        }
+
+        val durationMsString = executionDuration.inWholeMilliseconds
+            .toString()
+            .let { s ->
+                if (s.length > 4) s.chunked(3).joinToString("_")
+                else s
+            }
+
+        context.printer.debugln(
+            "Executed in $durationString ($durationMsString ms)"
+        )
     }
-}
 
-abstract class AbstractConnektCommand : CliktCommand("Connekt") {
-    val script by option(help = "Script file path")
-        .file(mustExist = true, canBeDir = false, mustBeReadable = true)
-        .required()
-
-    val requestNumber by option(help = "Request number")
-        .int()
-
-    val envFile by option(help = "Environment file")
-        .file(mustExist = true, canBeDir = false, mustBeReadable = true)
-        .defaultLazy {
-            script.parentFile.resolve("connekt.env.json")
-        }
-
-    val globalEnvFile by option(help = "Environment global file")
-        .file(mustExist = false, canBeDir = false, mustBeReadable = true)
-        .defaultLazy {
-            globalEnvDefaultFile()
-        }
-
-    val envName by option(help = "Environment name")
-
-    val useCompilationCache by option(help = "Use compilation cache")
-        .boolean()
-        .default(true)
-
-    private fun globalEnvDefaultFile(): File {
-        val userHome = System.getProperty("user.home")
-        return Paths.get(userHome)
-            .resolve(".connekt")
-            .resolve("connekt-global-env.db")
-            .toFile()
+    private fun createContextFactory(): ConnektContextFactory {
+        return if (!compileOnly)
+            DefaultContextFactory() else
+            CompileOnlyContextFactory()
     }
 }

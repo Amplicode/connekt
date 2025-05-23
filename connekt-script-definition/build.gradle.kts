@@ -1,7 +1,17 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+val ktorVersion: String by project
+
 plugins {
-    kotlin("jvm") version "2.0.21"
+    kotlin("jvm")
+    kotlin("plugin.serialization")
+}
+
+group = "io.amplicode"
+version = if (project.hasProperty("version")) {
+    project.findProperty("version") as String
+} else {
+    "0.1-SNAPSHOT"
 }
 
 dependencies {
@@ -20,13 +30,18 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.1")
     api("org.mapdb:mapdb:3.1.0")
+    implementation(libs.kotlinx.serialization.json)
+
+    api("com.github.mrmike:ok2curl:0.8.0")
 
     testImplementation(kotlin("test"))
-    val ktorVersion = "3.0.2"
     testImplementation("io.ktor:ktor-server-core-jvm:$ktorVersion")
     testImplementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")
     testImplementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
     testImplementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+    testImplementation("io.ktor:ktor-network-tls-certificates:$ktorVersion")
+    testImplementation("org.bouncycastle:bcpkix-jdk15on:1.70")
+    testImplementation("org.junit.platform:junit-platform-launcher")
 }
 
 // Copy sources into the jar to attach them in IDE

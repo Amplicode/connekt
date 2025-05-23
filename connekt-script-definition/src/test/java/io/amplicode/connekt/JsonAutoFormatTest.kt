@@ -1,6 +1,8 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.test.utils.TestServer
+import io.amplicode.connekt.dsl.GET
+import io.amplicode.connekt.test.utils.extractBodyString
+import io.amplicode.connekt.test.utils.server.TestServer
 import io.amplicode.connekt.test.utils.runScript
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -10,7 +12,7 @@ class JsonAutoFormatTest(server: TestServer) : TestWithServer(server) {
     @Test
     fun testJsonFormatting() {
         runScript(0) {
-            GET("$host/one-line-json-object")
+            GET("$host/json/one-line-object")
         }.let { output ->
             assertEquals(
                 //language=json
@@ -26,7 +28,7 @@ class JsonAutoFormatTest(server: TestServer) : TestWithServer(server) {
         }
 
         runScript(0) {
-            GET("$host/one-line-json-array")
+            GET("$host/json/one-line-array")
         }.let { output ->
             assertEquals(
                 //language=json
@@ -38,7 +40,7 @@ class JsonAutoFormatTest(server: TestServer) : TestWithServer(server) {
         }
 
         runScript(0) {
-            GET("$host/invalid-json-object")
+            GET("$host/json/invalid-object")
         }.let { output ->
             assertEquals(
                 "foo bar",

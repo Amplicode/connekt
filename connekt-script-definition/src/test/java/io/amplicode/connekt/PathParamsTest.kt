@@ -1,6 +1,7 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.test.utils.TestServer
+import io.amplicode.connekt.dsl.GET
+import io.amplicode.connekt.test.utils.server.TestServer
 import io.amplicode.connekt.test.utils.runScript
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
