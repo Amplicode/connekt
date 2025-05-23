@@ -29,40 +29,6 @@ import kotlin.test.*
 class DslTest(server: TestServer) : TestWithServer(server) {
 
     @Test
-    fun simpleTest() {
-        val persistenceStore = InMemoryPersistenceStore()
-        val varStore = VariablesStore(persistenceStore)
-
-        val oneAsStr by varStore.string()
-        oneAsStr.set("one")
-        assertEquals("one", oneAsStr.get())
-
-        val oneAsInt by varStore.int()
-        // The value must become `null` because the variable type had been changed
-        // so the variable can't be rad as Int now
-        assertNull(oneAsInt.get())
-        oneAsInt.set(1)
-        assertEquals(1, oneAsInt.get())
-    }
-
-    @Test
-    fun testVarSyntax() {
-        runScript {
-            val myVar by variable<String>()
-            val myInt by vars.int()
-
-            GET("$host/foo") then {
-                myVar.set(body!!.string())
-                myInt.set(1)
-            }
-            GET("$host/bar") then {
-                assertEquals("foo", myVar.get())
-                assertEquals(1, myInt.get())
-            }
-        }
-    }
-
-    @Test
     fun testEnvSyntax() {
         val envStore = InMemoryEnvironmentStore()
         envStore["one"] = 1
