@@ -1,0 +1,48 @@
+name: build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, labeled, unlabeled, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :connekt-script-definition:test --stacktrace
+      - name: Upload the build report
+        if: failure()
+        uses: actions/upload-artifact@master
+        with:
+          name: build-report
+          path: '**/build/reports'
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'  # or whatever you use
+
+      - name: Grant execute permissions for Gradle
+        run: chmod +x gradlew
+
+      - name: Build distribution ZIP
+        run: ./gradlew :connekt-scripting-host:distZip -PsnapshotVersion=true

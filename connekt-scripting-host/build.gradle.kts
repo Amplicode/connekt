@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "io.amplicode"
-version = "0.2.3"
+version = "0.2.4"
 
 dependencies {
     implementation(project(":connekt-script-definition"))
@@ -69,7 +69,7 @@ publishing {
     publications {
         create<MavenPublication>("distribution") {
             artifactId = "connekt-scripting-host"
-            version = (project.version as String) + "-SNAPSHOT"
+            version = getPublishVersion(true)
             artifact(tasks.distZip)
         }
         val uploadUrl = project.findProperty("uploadUrl") as String?
@@ -88,5 +88,15 @@ publishing {
                 }
             }
         }
+    }
+}
+
+fun getPublishVersion(isSnapshot: Boolean) = buildString {
+    append(project.version)
+    if (isSnapshot) {
+        val buildNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "0"
+        append(".")
+        append(buildNumber)
+        append("-SNAPSHOT")
     }
 }

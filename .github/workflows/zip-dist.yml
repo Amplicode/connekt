@@ -18,10 +18,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up JDK
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'  # or whatever you use
@@ -33,7 +33,7 @@ jobs:
         run: ./gradlew :connekt-scripting-host:distZip
 
       - name: Upload ZIP to GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: connekt-scripting-host/build/distributions/*.zip
         env:
