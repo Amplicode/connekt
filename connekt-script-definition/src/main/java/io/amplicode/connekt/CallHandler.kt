@@ -115,7 +115,7 @@ class CallHandler(
         val contentType = responseBody.contentType()
         val contentDisposition = response.contentDisposition()
 
-        if (contentDisposition?.filename() == null && contentLength in (0..300)) {
+        if (contentDisposition?.filename() == null && contentLength < 2000) {
             logResponse(contentType, buffer.clone())
         }
 
