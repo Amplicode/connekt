@@ -7,17 +7,15 @@
 
 package io.amplicode.connekt.dsl
 
-import com.jayway.jsonpath.ReadContext
 import io.amplicode.connekt.*
 import io.amplicode.connekt.context.ClientConfigurer
 import io.amplicode.connekt.context.DelegateProvider
 import io.amplicode.connekt.context.EnvironmentStore
 import io.amplicode.connekt.context.VariablesStore
-import okhttp3.Response
 import kotlin.reflect.KProperty
 
 @ConnektDsl
-interface ConnektBuilder : RequestRegistrator<RequestHolder> {
+interface ConnektBuilder : RequestRegistrator<RequestHolder>, JsonPathExtensionsProvider {
     val env: EnvironmentStore
     val vars: VariablesStore
 
@@ -29,10 +27,6 @@ interface ConnektBuilder : RequestRegistrator<RequestHolder> {
         name: String? = null,
         runUseCase: UseCaseBuilder.() -> Unit = {}
     )
-
-    fun Response.jsonPath(): ReadContext
-
-    fun <T> ReadContext.readList(path: String, clazz: Class<T>): List<T>
 
     operator fun <R> ConnektRequestExecutable<R>.provideDelegate(
         @Suppress("unused")

@@ -1,24 +1,20 @@
 package io.amplicode.connekt
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.jayway.jsonpath.ReadContext
-import com.jayway.jsonpath.TypeRef
 import io.amplicode.connekt.context.ClientConfigurer
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.context.DelegateProvider
-import io.amplicode.connekt.dsl.ConnektBuilder
-import io.amplicode.connekt.dsl.RequestBuilder
-import io.amplicode.connekt.dsl.RequestDelegate
-import io.amplicode.connekt.dsl.UseCaseBuilder
-import okhttp3.Response
+import io.amplicode.connekt.dsl.*
 import kotlin.reflect.KProperty
 
 fun ConnektBuilder(context: ConnektContext): ConnektBuilder =
-    ConnektBuilderImpl(context)
+    ConnektBuilderImpl(context, JsonExtensionsProviderImpl(context))
 
 internal class ConnektBuilderImpl(
-    private val context: ConnektContext
-) : ConnektBuilder {
+    private val context: ConnektContext,
+    private val jsonPathExtensions: JsonPathExtensionsProvider
+) : ConnektBuilder,
+    JsonPathExtensionsProvider by jsonPathExtensions {
+
     override val env = context.env
     override val vars = context.vars
 
@@ -41,17 +37,6 @@ internal class ConnektBuilderImpl(
         }
         val useCaseExecutable = UseCaseExecutable(context, useCase)
         context.requestsContext.registerExecutable(useCaseExecutable)
-    }
-
-    override fun Response.jsonPath(): ReadContext {
-        return context.jsonContext.getReadContext(this)
-    }
-
-    override fun <T> ReadContext.readList(path: String, clazz: Class<T>): List<T> {
-        val nodes: List<JsonNode> = read(path, object : TypeRef<List<JsonNode>>() {})
-        return nodes.map {
-            context.jsonContext.objectMapper.treeToValue(it, clazz)
-        }
     }
 
     override fun request(

@@ -2,6 +2,7 @@ package io.amplicode.connekt
 
 import com.jayway.jsonpath.ReadContext
 import io.amplicode.connekt.context.ConnektContext
+import io.amplicode.connekt.dsl.JsonPathExtensionsProvider
 import io.amplicode.connekt.dsl.RequestBuilder
 import io.amplicode.connekt.dsl.UseCaseBuilder
 import io.amplicode.connekt.dsl.UseCaseRequestDelegate
@@ -10,8 +11,10 @@ import kotlin.reflect.KProperty
 
 internal class UseCaseBuilderImpl(
     private val context: ConnektContext,
-    private val eachRequestExecutionStrategy: RequestExecutionStrategy
-) : UseCaseBuilder {
+    private val eachRequestExecutionStrategy: RequestExecutionStrategy,
+    jsonPathExtensionsProvider: JsonPathExtensionsProvider = JsonExtensionsProviderImpl(context)
+) : UseCaseBuilder,
+    JsonPathExtensionsProvider by jsonPathExtensionsProvider {
 
     override operator fun <T> T.provideDelegate(
         @Suppress("unused") receiver: Any?,
