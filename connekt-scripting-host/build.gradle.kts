@@ -69,7 +69,7 @@ publishing {
     publications {
         create<MavenPublication>("distribution") {
             artifactId = "connekt-scripting-host"
-            version = getPublishVersion(true)
+            version = "${project.version}-SNAPSHOT"
             artifact(tasks.distZip)
         }
         val uploadUrl = project.findProperty("uploadUrl") as String?
@@ -88,15 +88,5 @@ publishing {
                 }
             }
         }
-    }
-}
-
-fun getPublishVersion(isSnapshot: Boolean) = buildString {
-    append(project.version)
-    if (isSnapshot) {
-        val buildNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "0"
-        append(".")
-        append(buildNumber)
-        append("-SNAPSHOT")
     }
 }
