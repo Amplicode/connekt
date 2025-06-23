@@ -5,11 +5,12 @@ import io.amplicode.connekt.ConnektInterceptor
 import io.amplicode.connekt.Printer
 import io.amplicode.connekt.SystemOutPrinter
 import io.amplicode.connekt.context.*
-import io.amplicode.connekt.context.InMemoryPersistenceStore
+import io.amplicode.connekt.context.persistence.InMemoryStorage
+import io.amplicode.connekt.context.persistence.Storage
 import java.nio.file.Path
 
 fun testConnektContext(
-    persistenceStore: PersistenceStore = InMemoryPersistenceStore(),
+    storage: Storage = InMemoryStorage(),
     environmentStore: EnvironmentStore = NoopEnvironmentStore,
     cookiesContextFactory: (ConnektLifeCycleCallbacks) -> CookiesContext = { NoopCookiesContext },
     printer: Printer = TestPrinter(),
@@ -17,7 +18,7 @@ fun testConnektContext(
 ): ConnektContext {
     val lifeCycleCallbacksImpl = ConnektLifeCycleCallbacksImpl()
     val context = createConnektContext(
-        persistenceStore,
+        storage,
         environmentStore,
         cookiesContextFactory(lifeCycleCallbacksImpl),
         ClientContextImpl(

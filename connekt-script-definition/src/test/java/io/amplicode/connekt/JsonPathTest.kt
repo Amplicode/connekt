@@ -15,20 +15,22 @@ class JsonPathTest(server: TestServer) : TestWithServer(server) {
                 POST("$host/echo-body") {
                     contentType("application/json")
                     //language=json
-                    body("""
-                {
-                  "id": 1,
-                  "name": "Test User",
-                  "email": "test@example.com",
-                  "isActive": true,
-                  "roles": ["admin", "user"],
-                  "profile": {
-                    "age": 30,
-                    "city": "New York"
-                  },
-                  "createdAt": "2025-03-31T12:00:00Z"
-                }
-                """.trimIndent())
+                    body(
+                        """
+                        {
+                          "id": 1,
+                          "name": "Test User",
+                          "email": "test@example.com",
+                          "isActive": true,
+                          "roles": ["admin", "user"],
+                          "profile": {
+                            "age": 30,
+                            "city": "New York"
+                          },
+                          "createdAt": "2025-03-31T12:00:00Z"
+                        }
+                        """.trimIndent()
+                    )
                 } then {
                     jsonPath().apply {
                         assertEquals(
@@ -70,20 +72,22 @@ class JsonPathTest(server: TestServer) : TestWithServer(server) {
             POST("$host/echo-body") {
                 contentType("application/json")
                 //language=json
-                body("""
-                {
-                  "id": 1,
-                  "name": "Test User",
-                  "email": "test@example.com",
-                  "isActive": true,
-                  "roles": ["admin", "user"],
-                  "profile": {
-                    "age": 30,
-                    "city": "New York"
-                  },
-                  "createdAt": "2025-03-31T12:00:00Z"
-                }
-                """.trimIndent())
+                body(
+                    """
+                    {
+                      "id": 1,
+                      "name": "Test User",
+                      "email": "test@example.com",
+                      "isActive": true,
+                      "roles": ["admin", "user"],
+                      "profile": {
+                        "age": 30,
+                        "city": "New York"
+                      },
+                      "createdAt": "2025-03-31T12:00:00Z"
+                    }
+                    """.trimIndent()
+                )
             } then {
                 jsonPath().apply {
                     assertEquals(

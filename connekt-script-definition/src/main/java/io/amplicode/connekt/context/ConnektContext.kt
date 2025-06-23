@@ -2,6 +2,8 @@ package io.amplicode.connekt.context
 
 import io.amplicode.connekt.Printer
 import io.amplicode.connekt.SystemOutPrinter
+import io.amplicode.connekt.context.persistence.Storage
+import io.amplicode.connekt.debugln
 
 class ConnektContext(
     val env: EnvironmentStore,
@@ -10,8 +12,7 @@ class ConnektContext(
     val clientContext: ClientContext,
     val printer: Printer = SystemOutPrinter,
     val jsonContext: JsonContext = JsonContext(),
-    val executionContext: ExecutionContext = ExecutionContext(),
-    val persistenceStore: PersistenceStore = InMemoryPersistenceStore(),
+    val executionContext: ExecutionContext = ExecutionContext()
 ) : AutoCloseable {
 
     private val listeners: MutableList<Listener> = mutableListOf()
@@ -26,10 +27,12 @@ class ConnektContext(
             listeners.forEach {
                 runCatching {
                     it.onClose()
+                }.onFailure {
+                    it.printStackTrace()
                 }
             }
-        } catch (_: Exception) {
-
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -46,7 +49,7 @@ fun ConnektContext.onClose(operation: () -> Unit): ConnektContext {
 }
 
 fun createConnektContext(
-    persistenceStore: PersistenceStore,
+    storage: Storage,
     environmentStore: EnvironmentStore,
     cookiesContext: CookiesContext,
     clientContext: ClientContext,
@@ -54,14 +57,14 @@ fun createConnektContext(
 ): ConnektContext {
     return ConnektContext(
         environmentStore,
-        VariablesStore(persistenceStore),
+        VariablesStore(storage),
         cookiesContext,
         clientContext,
         printer,
         jsonContext = JsonContext(),
-        executionContext = ExecutionContext(),
-        persistenceStore = persistenceStore
+        executionContext = ExecutionContext()
     ).onClose {
-        persistenceStore.close()
+        storage.close()
+        storage.close()
     }
 }

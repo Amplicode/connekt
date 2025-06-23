@@ -6,7 +6,6 @@
 
 package io.amplicode.connekt
 
-import io.amplicode.connekt.context.VariablesStore
 import io.amplicode.connekt.dsl.GET
 import io.amplicode.connekt.dsl.POST
 import io.amplicode.connekt.dsl.contentType
@@ -14,7 +13,6 @@ import io.amplicode.connekt.test.utils.components.InMemoryEnvironmentStore
 import io.amplicode.connekt.test.utils.components.testConnektContext
 import io.amplicode.connekt.test.utils.extractBodyString
 import io.amplicode.connekt.test.utils.runScript
-import io.amplicode.connekt.context.InMemoryPersistenceStore
 import io.amplicode.connekt.test.utils.server.TestServer
 import io.ktor.serialization.kotlinx.json.*
 import org.assertj.core.api.Assertions

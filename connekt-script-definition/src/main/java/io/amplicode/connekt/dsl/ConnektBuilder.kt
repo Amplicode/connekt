@@ -7,10 +7,12 @@
 
 package io.amplicode.connekt.dsl
 
-import io.amplicode.connekt.*
+import io.amplicode.connekt.ConnektRequestExecutable
+import io.amplicode.connekt.RequestBuilderCall
+import io.amplicode.connekt.RequestHolder
 import io.amplicode.connekt.context.ClientConfigurer
-import io.amplicode.connekt.context.DelegateProvider
 import io.amplicode.connekt.context.EnvironmentStore
+import io.amplicode.connekt.context.StoredVariableDelegate
 import io.amplicode.connekt.context.VariablesStore
 import kotlin.reflect.KProperty
 
@@ -19,7 +21,8 @@ interface ConnektBuilder : RequestRegistrator<RequestHolder>, JsonPathExtensions
     val env: EnvironmentStore
     val vars: VariablesStore
 
-    fun <T> variable(): DelegateProvider<T>
+    fun variable(): StoredVariableDelegate
+
     fun configureClient(configure: ClientConfigurer)
 
     @RequestBuilderCall
@@ -33,16 +36,4 @@ interface ConnektBuilder : RequestRegistrator<RequestHolder>, JsonPathExtensions
         receiver: Any?,
         prop: KProperty<*>
     ): ValueDelegate<R>
-}
-
-interface ValueDelegate<T> {
-    operator fun getValue(
-        @Suppress("unused") thisRef: Nothing?,
-        @Suppress("unused") property: KProperty<*>
-    ): T
-
-    operator fun getValue(
-        @Suppress("unused") thisRef: Any?,
-        @Suppress("unused") property: KProperty<*>
-    ): T
 }

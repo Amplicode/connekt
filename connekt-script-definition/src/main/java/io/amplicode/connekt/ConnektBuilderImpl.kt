@@ -2,7 +2,7 @@ package io.amplicode.connekt
 
 import io.amplicode.connekt.context.ClientConfigurer
 import io.amplicode.connekt.context.ConnektContext
-import io.amplicode.connekt.context.DelegateProvider
+import io.amplicode.connekt.context.StoredVariableDelegate
 import io.amplicode.connekt.dsl.*
 import kotlin.reflect.KProperty
 
@@ -17,7 +17,7 @@ internal class ConnektBuilderImpl(
 
     override val env = context.env
     override val vars = context.vars
-    override fun <T> variable(): DelegateProvider<T> = vars.obj()
+    override fun variable(): StoredVariableDelegate = vars.variable()
 
     override fun configureClient(configure: ClientConfigurer) {
         context.clientContext.globalConfigurer = configure
@@ -52,7 +52,7 @@ internal class ConnektBuilderImpl(
         receiver: Any?,
         prop: KProperty<*>
     ): ValueDelegate<R> {
-        val storedValue = StoredValueImpl<R>(prop, this)
+        val storedValue = UpdatableStoredValue<R>(prop, this)
         return RequestValueDelegate(
             context,
             this,
@@ -60,19 +60,18 @@ internal class ConnektBuilderImpl(
         )
     }
 
-    inner class StoredValueImpl<R>(
-        prop: KProperty<*>,
+    inner class UpdatableStoredValue<R>(
+        private val prop: KProperty<*>,
         requestHolder: ConnektRequestExecutable<R>
     ) : RequestValueDelegate.StoredValue<R> {
 
         private val key = prop.name
-        private val storeMap = context.persistenceStore
-            .getMap("StoredValueImpl")
+        private val storeMap = context.vars
 
         override var value: R?
-            get() = storeMap[key] as R?
+            get() = storeMap.getValue(key, prop.getter.returnType)
             set(value) {
-                storeMap[key] = value
+                storeMap.setValue(key, value)
             }
 
         init {
