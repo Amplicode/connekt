@@ -11,7 +11,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
-import io.amplicode.connekt.context.InMemoryPersistenceStore
+import io.amplicode.connekt.context.persistence.InMemoryPersistenceStore
 import kotlin.script.experimental.api.EvaluationResult
 import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.isError

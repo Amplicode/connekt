@@ -67,7 +67,7 @@ internal class ConnektBuilderImpl(
 
         private val key = prop.name
         private val storeMap = context.persistenceStore
-            .getMap("StoredValueImpl")
+            .getMap("variables")
 
         override var value: R?
             get() = storeMap[key] as R?

@@ -1,24 +1,21 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.context.FilePersistenceStore
-import io.amplicode.connekt.context.PersistenceStore
+import io.amplicode.connekt.context.persistence.JsonFilePersistenceStore
+import io.amplicode.connekt.context.persistence.PersistenceStore
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
-import java.io.NotSerializableException
-import java.io.Serializable
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import java.io.Serializable
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class FilePersistenceStoreTest {
+class JsonFilePersistenceStoreTest {
 
     @TempDir
     lateinit var tempDir: Path
@@ -27,7 +24,7 @@ class FilePersistenceStoreTest {
 
     @BeforeEach
     fun setUp() {
-        store = FilePersistenceStore(tempDir)
+        store = JsonFilePersistenceStore(tempDir)
     }
 
     @AfterEach
@@ -48,7 +45,7 @@ class FilePersistenceStoreTest {
         assertFalse(Files.exists(newDir))
 
         // Create a store with that directory
-        val newStore = FilePersistenceStore(newDir)
+        val newStore = JsonFilePersistenceStore(newDir)
         try {
             // Verify the directory was created
             assertTrue(Files.exists(newDir))
@@ -93,7 +90,7 @@ class FilePersistenceStoreTest {
         store.close()
 
         // Create a new store instance with the same directory
-        val newStore = FilePersistenceStore(tempDir)
+        val newStore = JsonFilePersistenceStore(tempDir)
         try {
             // Get the same map and verify the data is still there
             val persistentMap = newStore.getMap("persistent-map")
@@ -105,51 +102,31 @@ class FilePersistenceStoreTest {
     }
 
     @Test
-    fun `test handling of non-serializable objects`() {
-        // Get a map
-        val map = store.getMap("non-serializable-map")
-
-        // Add a non-serializable object
-        val nonSerializable = object {}
-        map["non-serializable"] = nonSerializable
-
-        // Close the store to trigger serialization - this should throw NotSerializableException
-        assertThrows<NotSerializableException> {
-            store.close()
-        }
-
-        // Since the previous store.close() failed, we need to create a new store without closing the previous one
-        val newStore = FilePersistenceStore(tempDir)
-        try {
-            // Get the map and verify it's empty (since no data was saved due to serialization failure)
-            val recoveredMap = newStore.getMap("non-serializable-map")
-            assertTrue(recoveredMap.isEmpty())
-        } finally {
-            newStore.close()
-        }
-    }
-
-    @Test
-    fun `test handling of complex serializable objects`() {
+    fun `test handling of complex objects`() {
         // Get a map
         val map = store.getMap("complex-map")
 
-        // Add a complex serializable object
-        val complex = ComplexSerializable("test", 42, listOf("a", "b", "c"))
+        // Add a complex object
+        val complex = mapOf(
+            "name" to "test",
+            "value" to 42,
+            "items" to listOf("a", "b", "c")
+        )
         map["complex"] = complex
 
         // Close the store to trigger serialization
         store.close()
 
         // Create a new store instance
-        val newStore = FilePersistenceStore(tempDir)
+        val newStore = JsonFilePersistenceStore(tempDir)
         try {
             // Get the map and verify the complex object was properly serialized and deserialized
             val recoveredMap = newStore.getMap("complex-map")
-            val recoveredComplex = recoveredMap["complex"] as ComplexSerializable
-            assertEquals("test", recoveredComplex.name)
-            assertEquals(42, recoveredComplex.value)
-            assertEquals(listOf("a", "b", "c"), recoveredComplex.items)
+            @Suppress("UNCHECKED_CAST")
+            val recoveredComplex = recoveredMap["complex"] as Map<String, Any?>
+            assertEquals("test", recoveredComplex["name"])
+            assertEquals(42, recoveredComplex["value"])
+            assertEquals(listOf("a", "b", "c"), recoveredComplex["items"])
         } finally {
             newStore.close()
         }
@@ -171,7 +148,7 @@ class FilePersistenceStoreTest {
         store.close()
 
         // Create a new store instance
-        val newStore = FilePersistenceStore(tempDir)
+        val newStore = JsonFilePersistenceStore(tempDir)
         try {
             // Verify all maps were properly saved and loaded
             val recoveredMap1 = newStore.getMap("map1")
@@ -187,8 +164,58 @@ class FilePersistenceStoreTest {
         }
     }
 
-    // A complex serializable class for testing
-    data class ComplexSerializable(
+    @Test
+    fun `test JSON file format`() {
+        // Get a map and add some data
+        val map = store.getMap("json-map")
+        map["key1"] = "value1"
+        map["key2"] = 42
+
+        // Close the store to ensure data is saved
+        store.close()
+
+        // Verify the file exists and has a .json extension
+        val jsonFile = tempDir.resolve("json-map.json")
+        assertTrue(Files.exists(jsonFile))
+
+        // Read the file content and verify it contains JSON
+        val content = String(Files.readAllBytes(jsonFile))
+        // With type information enabled, the JSON format will be different
+        // Just check that the keys and values are present in some form
+        assertTrue(content.contains("key1"))
+        assertTrue(content.contains("value1"))
+        assertTrue(content.contains("key2"))
+        assertTrue(content.contains("42"))
+    }
+
+    @Test
+    fun `test handling of custom objects`() {
+        // Get a map
+        val map = store.getMap("custom-objects-map")
+
+        // Add a custom object
+        val customObject = CustomObject("test", 42, listOf("a", "b", "c"))
+        map["customObject"] = customObject
+
+        // Close the store to trigger serialization
+        store.close()
+
+        // Create a new store instance
+        val newStore = JsonFilePersistenceStore(tempDir)
+        try {
+            // Get the map and verify the custom object was properly serialized and deserialized
+            val recoveredMap = newStore.getMap("custom-objects-map")
+            val recoveredObject = recoveredMap["customObject"] as CustomObject
+            assertEquals("test", recoveredObject.name)
+            assertEquals(42, recoveredObject.value)
+            assertEquals(listOf("a", "b", "c"), recoveredObject.items)
+        } finally {
+            newStore.close()
+        }
+    }
+
+    // A custom class for testing
+    data class CustomObject(
         val name: String,
         val value: Int,
         val items: List<String>

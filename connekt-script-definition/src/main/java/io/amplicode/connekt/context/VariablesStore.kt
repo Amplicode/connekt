@@ -5,6 +5,7 @@
 
 package io.amplicode.connekt.context
 
+import io.amplicode.connekt.context.persistence.PersistenceStore
 import kotlin.reflect.KProperty
 
 class VariablesStore(private val values: MutableMap<String, Any?>) {

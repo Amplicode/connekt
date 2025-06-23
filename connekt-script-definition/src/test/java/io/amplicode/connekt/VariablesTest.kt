@@ -1,7 +1,7 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.context.FilePersistenceStore
-import io.amplicode.connekt.context.InMemoryPersistenceStore
+import io.amplicode.connekt.context.persistence.JavaSerializationFilePersistenceStore
+import io.amplicode.connekt.context.persistence.InMemoryPersistenceStore
 import io.amplicode.connekt.context.VariablesStore
 import io.amplicode.connekt.dsl.GET
 import io.amplicode.connekt.test.utils.components.testConnektContext
@@ -56,7 +56,7 @@ class VariablesTest(server: TestServer) : TestWithServer(server) {
         fun runMyScript(requestNumber: Int) = runScript(
             requestNumber = requestNumber,
             context = testConnektContext(
-                persistenceStore = FilePersistenceStore(persistenceDir)
+                persistenceStore = JavaSerializationFilePersistenceStore(persistenceDir)
             )
         ) {
             val myVar by variable<String>()
@@ -81,7 +81,7 @@ class VariablesTest(server: TestServer) : TestWithServer(server) {
         fun runMyScript(requestNumber: Int) = runScript(
             requestNumber = requestNumber,
             context = testConnektContext(
-                persistenceStore = FilePersistenceStore(persistenceDir)
+                persistenceStore = JavaSerializationFilePersistenceStore(persistenceDir)
             )
         ) {
             data class MyObject(val name: String, val age: Int) : Serializable

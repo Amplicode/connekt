@@ -2,6 +2,8 @@ package io.amplicode.connekt.context
 
 import io.amplicode.connekt.Printer
 import io.amplicode.connekt.SystemOutPrinter
+import io.amplicode.connekt.context.persistence.InMemoryPersistenceStore
+import io.amplicode.connekt.context.persistence.PersistenceStore
 
 class ConnektContext(
     val env: EnvironmentStore,

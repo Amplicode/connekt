@@ -5,7 +5,8 @@ import io.amplicode.connekt.ConnektInterceptor
 import io.amplicode.connekt.Printer
 import io.amplicode.connekt.SystemOutPrinter
 import io.amplicode.connekt.context.*
-import io.amplicode.connekt.context.InMemoryPersistenceStore
+import io.amplicode.connekt.context.persistence.InMemoryPersistenceStore
+import io.amplicode.connekt.context.persistence.PersistenceStore
 import java.nio.file.Path
 
 fun testConnektContext(

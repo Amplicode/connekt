@@ -1,8 +1,8 @@
 package io.amplicode.connekt
 
 import io.amplicode.connekt.context.*
-import io.amplicode.connekt.context.FilePersistenceStore
-import io.amplicode.connekt.context.InMemoryPersistenceStore
+import io.amplicode.connekt.context.persistence.InMemoryPersistenceStore
+import io.amplicode.connekt.context.persistence.JsonFilePersistenceStore
 import kotlin.io.path.createFile
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.notExists
@@ -18,7 +18,7 @@ class DefaultContextFactory : ConnektContextFactory {
         // Ensure the parent directory exists
         storageFile.createParentDirectories()
 
-        val persistenceStore = FilePersistenceStore(storageFile)
+        val persistenceStore = JsonFilePersistenceStore(storageFile)
 
         val cookiesFile = command.cookiesFile
         if (cookiesFile.notExists()) {
