@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "io.amplicode"
-version = "0.2.4"
+version = project.property("version_name")!!
 
 dependencies {
     implementation(project(":connekt-script-definition"))
@@ -34,12 +34,6 @@ tasks.test {
     useJUnitPlatform()
 }
 
-tasks.jar {
-    manifest {
-        attributes["Main-Class"] = "io.amplicode.connekt.EvaluatorKt"
-    }
-}
-
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_1_8)
@@ -49,10 +43,6 @@ kotlin {
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_1_8
-}
-
-tasks.register("buildConnektRunnerJar") {
-    dependsOn(tasks.installDist)
 }
 
 application {
@@ -69,7 +59,13 @@ publishing {
     publications {
         create<MavenPublication>("distribution") {
             artifactId = "connekt-scripting-host"
-            version = "${project.version}-SNAPSHOT"
+            version = buildString {
+                append(project.version)
+                // Nexus accepts SNAPSHOT versions only
+                if (!endsWith("-SNAPSHOT")) {
+                    append("-SNAPSHOT")
+                }
+            }
             artifact(tasks.distZip)
         }
         val uploadUrl = project.findProperty("uploadUrl") as String?
