@@ -2,6 +2,7 @@ package io.amplicode.connekt.test.utils.components
 
 import io.amplicode.connekt.context.persistence.JavaSerializationFilePersistenceStore
 import io.amplicode.connekt.context.persistence.PersistenceStore
+import io.amplicode.connekt.context.persistence.defaultPersistenceStore
 import kotlin.io.path.createTempDirectory
 
 /**
@@ -10,5 +11,5 @@ import kotlin.io.path.createTempDirectory
  */
 class TemporaryPersistenceStoreProvider {
     val tempDir = createTempDirectory("connekt-test-dir")
-    fun getPersistenceStore(): PersistenceStore = JavaSerializationFilePersistenceStore(tempDir)
+    fun getPersistenceStore(): PersistenceStore = defaultPersistenceStore(tempDir)
 }

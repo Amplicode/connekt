@@ -1,5 +1,6 @@
 package io.amplicode.connekt.context.persistence
 
+import com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_INVALID_SUBTYPE
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator
@@ -24,6 +25,7 @@ class JsonFilePersistenceStore(private val directory: Path) : PersistenceStore {
             ObjectMapper.DefaultTyping.NON_FINAL
         )
         .enable(SerializationFeature.INDENT_OUTPUT)
+        .configure(FAIL_ON_INVALID_SUBTYPE, false)
 
     init {
         // Create the directory if it doesn't exist
@@ -43,7 +45,8 @@ class JsonFilePersistenceStore(private val directory: Path) : PersistenceStore {
                     val map = objectMapper.readValue(inputStream, Map::class.java) as MutableMap<String, Any?>
                     inputStream.close()
                     map
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    e.printStackTrace()
                     // If there's an error loading the file, start with an empty map
                     mutableMapOf()
                 }

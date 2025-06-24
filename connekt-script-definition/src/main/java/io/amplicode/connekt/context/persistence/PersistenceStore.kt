@@ -1,6 +1,7 @@
 package io.amplicode.connekt.context.persistence
 
 import java.io.Closeable
+import java.nio.file.Path
 
 /**
  * Interface for a persistence store that can store and retrieve objects.
@@ -21,3 +22,5 @@ interface PersistenceStore : Closeable {
     override fun close()
 }
 
+fun defaultPersistenceStore(directory: Path) =
+    JsonFilePersistenceStore(directory)
