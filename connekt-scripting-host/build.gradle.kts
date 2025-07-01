@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "io.amplicode"
-version = "2025.1.4.1"
+version = "2025.1.5"
 
 dependencies {
     implementation(project(":connekt-script-definition"))
