@@ -5,7 +5,7 @@ import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.dsl.JsonPathExtensionsProvider
 import io.amplicode.connekt.dsl.RequestBuilder
 import io.amplicode.connekt.dsl.UseCaseBuilder
-import io.amplicode.connekt.dsl.UseCaseValueDelegate
+import io.amplicode.connekt.UseCaseValueDelegate
 import okhttp3.Response
 import kotlin.reflect.KProperty
 

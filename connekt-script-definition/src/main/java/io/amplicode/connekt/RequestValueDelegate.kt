@@ -1,7 +1,7 @@
 package io.amplicode.connekt
 
 import io.amplicode.connekt.context.ConnektContext
-import io.amplicode.connekt.dsl.ValueDelegate
+import io.amplicode.connekt.ValueDelegateBase
 import kotlin.reflect.KProperty
 
 /**
@@ -18,19 +18,9 @@ class RequestValueDelegate<T>(
     private val connektContext: ConnektContext,
     private val requestHolder: ConnektRequestExecutable<T>,
     private val storedValue: StoredValue<T>,
-) : ValueDelegate<T> {
+) : ValueDelegateBase<T>() {
 
-    override operator fun getValue(
-        @Suppress("unused") thisRef: Nothing?,
-        @Suppress("unused") property: KProperty<*>
-    ): T = getValueImpl(property)
-
-    override operator fun getValue(
-        @Suppress("unused") thisRef: Any?,
-        @Suppress("unused") property: KProperty<*>
-    ): T = getValueImpl(property)
-
-    private fun getValueImpl(property: KProperty<*>): T {
+    override fun getValueImpl(thisRef: Any?, property: KProperty<*>): T {
         storedValue.value?.let { return it }
         connektContext.printer.println("Initializing value for property `${property.name}`")
         return requestHolder.execute()

@@ -4,6 +4,8 @@ import io.amplicode.connekt.Printer
 import io.amplicode.connekt.SystemOutPrinter
 import io.amplicode.connekt.context.persistence.InMemoryPersistenceStore
 import io.amplicode.connekt.context.persistence.PersistenceStore
+import io.amplicode.connekt.context.persistence.Storage
+import java.io.File
 
 class ConnektContext(
     val env: EnvironmentStore,
@@ -54,9 +56,12 @@ fun createConnektContext(
     clientContext: ClientContext,
     printer: Printer,
 ): ConnektContext {
+    val storage = Storage(
+        File("/Users/alxmag/.connekt/variables/gg.json")
+    )
     return ConnektContext(
         environmentStore,
-        VariablesStore(persistenceStore),
+        VariablesStore(storage),
         cookiesContext,
         clientContext,
         printer,
@@ -65,5 +70,6 @@ fun createConnektContext(
         persistenceStore = persistenceStore
     ).onClose {
         persistenceStore.close()
+        storage.close()
     }
 }

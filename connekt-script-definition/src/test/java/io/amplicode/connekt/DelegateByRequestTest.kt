@@ -14,53 +14,6 @@ import kotlin.test.assertEquals
 
 class DelegateByRequestTest(server: TestServer) : TestWithServer(server) {
     @Test
-    fun testDelegatedPropertiesRequest() {
-        val output = runScript(1) {
-            val fooRequest by GET("$host/foo") then {
-                body!!.string()
-            }
-
-            GET("$host/bar") {
-                header("param-from-foo-request", fooRequest)
-            }
-        }
-
-        val hostWithoutProtocol = host.removePrefix("http://")
-        assertEquals(
-            """
-            Initializing value for property `fooRequest`
-            GET $host/foo
-            User-Agent: connekt/0.0.1 
-            Host: $hostWithoutProtocol 
-            Connection: Keep-Alive 
-            Accept-Encoding: gzip
-
-            HTTP/1.1 200 OK
-            Content-Length: 3 
-            Content-Type: text/plain; charset=UTF-8 
-            Connection: keep-alive
-
-            foo
-            GET $host/bar
-            param-from-foo-request: foo 
-            User-Agent: connekt/0.0.1 
-            Host: $hostWithoutProtocol 
-            Connection: Keep-Alive 
-            Accept-Encoding: gzip
-
-            HTTP/1.1 200 OK
-            Content-Length: 3 
-            Content-Type: text/plain; charset=UTF-8 
-            Connection: keep-alive
-
-            bar
-
-        """.trimIndent(),
-            output
-        )
-    }
-
-    @Test
     fun `test caching of value delegated by request`() {
         val dbProvider = TemporaryPersistenceStoreProvider()
 

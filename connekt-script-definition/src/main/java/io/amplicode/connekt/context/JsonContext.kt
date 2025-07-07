@@ -2,6 +2,7 @@ package io.amplicode.connekt.context
 
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.core.JsonParser
+import com.fasterxml.jackson.core.StreamReadFeature
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.kotlinModule
@@ -15,7 +16,9 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.WeakHashMap
 
-class JsonContext(val objectMapper: ObjectMapper = defaultObjectMapper) {
+class JsonContext() {
+    val objectMapper: ObjectMapper = defaultObjectMapper
+
     private val jsonPaths: WeakHashMap<Response, ReadContext> = WeakHashMap()
 
     fun getReadContext(response: Response): ReadContext {
@@ -42,7 +45,7 @@ class JsonContext(val objectMapper: ObjectMapper = defaultObjectMapper) {
     }
 }
 
-private val defaultObjectMapper: ObjectMapper by lazy {
+val defaultObjectMapper: ObjectMapper by lazy {
     ObjectMapper()
         .registerModules(kotlinModule())
         .enable(JsonGenerator.Feature.IGNORE_UNKNOWN)
