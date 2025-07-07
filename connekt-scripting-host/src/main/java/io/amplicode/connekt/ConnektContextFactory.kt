@@ -1,9 +1,8 @@
 package io.amplicode.connekt
 
 import io.amplicode.connekt.context.*
-import io.amplicode.connekt.context.persistence.InMemoryPersistenceStore
-import io.amplicode.connekt.context.persistence.JsonFilePersistenceStore
-import io.amplicode.connekt.context.persistence.defaultPersistenceStore
+import io.amplicode.connekt.context.persistence.InMemoryStorage
+import io.amplicode.connekt.context.persistence.defaultStorage
 import kotlin.io.path.createFile
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.notExists
@@ -19,8 +18,6 @@ class DefaultContextFactory : ConnektContextFactory {
         // Ensure the parent directory exists
         storageFile.createParentDirectories()
 
-        val persistenceStore = defaultPersistenceStore(storageFile)
-
         val cookiesFile = command.cookiesFile
         if (cookiesFile.notExists()) {
             cookiesFile.createFile()
@@ -31,7 +28,7 @@ class DefaultContextFactory : ConnektContextFactory {
 
         val printer = SystemOutPrinter
         val context = createConnektContext(
-            persistenceStore,
+            defaultStorage(storageFile),
             createEnvStore(command),
             cookiesContext,
             ClientContextImpl(ConnektInterceptor(printer, command.responseDir)),
@@ -73,7 +70,7 @@ class CompileOnlyContextFactory : ConnektContextFactory {
         val printer = SystemOutPrinter
 
         return createConnektContext(
-            InMemoryPersistenceStore(),
+            InMemoryStorage(),
             NoopEnvironmentStore,
             NoopCookiesContext,
             ClientContextImpl(ConnektInterceptor(printer, null)),

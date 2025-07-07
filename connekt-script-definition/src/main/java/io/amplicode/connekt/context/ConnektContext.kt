@@ -2,10 +2,7 @@ package io.amplicode.connekt.context
 
 import io.amplicode.connekt.Printer
 import io.amplicode.connekt.SystemOutPrinter
-import io.amplicode.connekt.context.persistence.InMemoryPersistenceStore
-import io.amplicode.connekt.context.persistence.PersistenceStore
 import io.amplicode.connekt.context.persistence.Storage
-import java.io.File
 
 class ConnektContext(
     val env: EnvironmentStore,
@@ -14,8 +11,7 @@ class ConnektContext(
     val clientContext: ClientContext,
     val printer: Printer = SystemOutPrinter,
     val jsonContext: JsonContext = JsonContext(),
-    val executionContext: ExecutionContext = ExecutionContext(),
-    val persistenceStore: PersistenceStore = InMemoryPersistenceStore(),
+    val executionContext: ExecutionContext = ExecutionContext()
 ) : AutoCloseable {
 
     private val listeners: MutableList<Listener> = mutableListOf()
@@ -50,15 +46,12 @@ fun ConnektContext.onClose(operation: () -> Unit): ConnektContext {
 }
 
 fun createConnektContext(
-    persistenceStore: PersistenceStore,
+    storage: Storage,
     environmentStore: EnvironmentStore,
     cookiesContext: CookiesContext,
     clientContext: ClientContext,
     printer: Printer,
 ): ConnektContext {
-    val storage = Storage(
-        File("/Users/alxmag/.connekt/variables/gg.json")
-    )
     return ConnektContext(
         environmentStore,
         VariablesStore(storage),
@@ -66,10 +59,9 @@ fun createConnektContext(
         clientContext,
         printer,
         jsonContext = JsonContext(),
-        executionContext = ExecutionContext(),
-        persistenceStore = persistenceStore
+        executionContext = ExecutionContext()
     ).onClose {
-        persistenceStore.close()
+        storage.close()
         storage.close()
     }
 }

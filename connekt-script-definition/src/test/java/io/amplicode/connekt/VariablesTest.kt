@@ -1,6 +1,8 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.context.persistence.defaultPersistenceStore
+import io.amplicode.connekt.context.VariablesStore
+import io.amplicode.connekt.context.persistence.InMemoryStorage
+import io.amplicode.connekt.context.persistence.defaultStorage
 import io.amplicode.connekt.dsl.GET
 import io.amplicode.connekt.test.utils.components.testConnektContext
 import io.amplicode.connekt.test.utils.runScript
@@ -9,25 +11,26 @@ import java.io.Serializable
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class VariablesTest(server: TestServer) : TestWithServer(server) {
 
-//    @Test
-//    fun `test persistent variables store`() {
-//        val persistenceStore = InMemoryPersistenceStore()
-//        val varStore = VariablesStore(persistenceStore)
-//
-//        val oneAsStr by varStore.string()
-//        oneAsStr.set("one")
-//        assertEquals("one", oneAsStr.get())
-//
-//        val oneAsInt by varStore.int()
-//        // The value must become `null` because the variable type had been changed
-//        // so the variable can't be rad as Int now
-//        assertNull(oneAsInt.get())
-//        oneAsInt.set(1)
-//        assertEquals(1, oneAsInt.get())
-//    }
+    @Test
+    fun `test persistent variables store`() {
+        val persistenceStore = InMemoryStorage()
+        val varStore = VariablesStore(persistenceStore)
+
+        val oneAsStr by varStore.string()
+        oneAsStr.set("one")
+        assertEquals("one", oneAsStr.get())
+
+        val oneAsInt by varStore.int()
+        // The value must become `null` because the variable type had been changed
+        // so the variable can't be rad as Int now
+        assertNull(oneAsInt.get())
+        oneAsInt.set(1)
+        assertEquals(1, oneAsInt.get())
+    }
 
     @Test
     fun `test by var syntax`() {
@@ -52,13 +55,28 @@ class VariablesTest(server: TestServer) : TestWithServer(server) {
     }
 
     @Test
+    fun `test delegated var usage in url other request string`() {
+        runScript(1) {
+            data class MyObject(val name: String, val age: Int)
+
+            val firstResponse by GET("$host/foo") then {
+                MyObject("fooz", 22)
+            }
+
+            GET("$host/echo-text?text=${firstResponse.name}") then {
+                assertEquals("fooz", body!!.string())
+            }
+        }
+    }
+
+    @Test
     fun `test strings persistence`() {
         val persistenceDir = createTempDirectory("connekt-persistence-test")
 
         fun runMyScript(requestNumber: Int) = runScript(
             requestNumber = requestNumber,
             context = testConnektContext(
-                persistenceStore = defaultPersistenceStore(persistenceDir)
+                storage = defaultStorage(persistenceDir)
             )
         ) {
             var myVar: String by vars.variable()
@@ -85,7 +103,7 @@ class VariablesTest(server: TestServer) : TestWithServer(server) {
         fun runMyScript(requestNumber: Int) = runScript(
             requestNumber = requestNumber,
             context = testConnektContext(
-                persistenceStore = defaultPersistenceStore(persistenceDir)
+                storage = defaultStorage(persistenceDir)
             )
         ) {
             data class MyObject(val name: String, val age: Int) : Serializable

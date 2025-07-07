@@ -5,8 +5,8 @@
 
 package io.amplicode.connekt.context
 
-import io.amplicode.connekt.context.persistence.PersistenceStore
 import io.amplicode.connekt.context.persistence.Storage
+import io.amplicode.connekt.context.persistence.getValue
 import kotlin.reflect.KProperty
 
 class VariablesStore(val values: Storage) {
@@ -79,8 +79,4 @@ class StoredVariableDelegate(val storage: Storage) {
     ) {
         storage.setValue(property.name, value)
     }
-}
-
-fun VariablesStore(persistenceStore: PersistenceStore): VariablesStore {
-    TODO()
 }

@@ -1,60 +1,29 @@
 package io.amplicode.connekt.context.persistence
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
-import io.amplicode.connekt.context.defaultObjectMapper
-import java.io.File
+import java.io.Closeable
+import java.nio.file.Path
 import kotlin.reflect.KClass
 
-class Storage(
-    private val file: File,
-    val objectMapper: ObjectMapper = defaultObjectMapper
-) {
+/**
+ * Interface for a persistence store that can store and retrieve objects.
+ * This is used to abstract the storage mechanism from the rest of the code.
+ */
+interface Storage : Closeable {
 
-    val data: NodeMap = initStorage()
+    fun <T : Any> getValue(key: String, klass: KClass<T>): T?
 
-    private fun initStorage(): NodeMap {
-        return if (file.exists()) {
-            readFileSafe()
-        } else {
-            file.parentFile.mkdirs()
-            file.createNewFile()
-            mutableMapOf()
-        }
+    fun setValue(key: String, value: Any?)
 
-    }
-
-    private val changedData: NodeMap = mutableMapOf()
-
-    inline fun <reified T : Any> getValue(key: String): T? {
-        return getValue(key, T::class)
-    }
-
-    fun <T : Any> getValue(key: String, klass: KClass<T>): T? {
-        val jsonNode = data[key] ?: return null
-        return objectMapper.convertValue<T?>(jsonNode, klass.java)
-    }
-
-    fun setValue(key: String, value: Any?) {
-        val jsonNode = objectMapper.valueToTree<JsonNode>(value)
-        data[key] = jsonNode
-        changedData[key] = jsonNode
-    }
-
-    fun close() {
-        if (changedData.isNotEmpty()) {
-            val existingData: NodeMap = readFileSafe()
-            existingData.putAll(changedData)
-            objectMapper.writeValue(file, existingData)
-        }
-    }
-
-    private fun readFileSafe(): NodeMap = try {
-        objectMapper.readValue(file)
-    } catch (_: Exception) {
-        mutableMapOf()
-    }
+    /**
+     * Closes the persistence store, releasing any resources.
+     */
+    override fun close()
 }
 
-typealias NodeMap = MutableMap<String, JsonNode>
+fun defaultStorage(directory: Path): Storage =
+    JsonStorage(directory.resolve("variables.json"))
+
+
+inline fun <reified T : Any> Storage.getValue(key: String): T? {
+    return getValue(key, T::class)
+}

@@ -22,7 +22,7 @@ class DelegateByRequestTest(server: TestServer) : TestWithServer(server) {
         repeat(5) { timeNumber ->
             runScript(
                 requestNumber = 1,
-                context = testConnektContext(persistenceStore = dbProvider.getPersistenceStore())
+                context = testConnektContext(storage = dbProvider.getPersistenceStore())
             ) {
                 val counterResponse by incCounterRequest("delegator-caching-test")
                     .thenBodyString()
@@ -43,7 +43,7 @@ class DelegateByRequestTest(server: TestServer) : TestWithServer(server) {
         println("1st run")
         runScript(
             context = testConnektContext(
-                persistenceStore = dbProvider.getPersistenceStore()
+                storage = dbProvider.getPersistenceStore()
             )
         ) {
             // 1
@@ -60,7 +60,7 @@ class DelegateByRequestTest(server: TestServer) : TestWithServer(server) {
         println("2nd run")
         runScript(
             requestNumber = 0,
-            context = testConnektContext(persistenceStore = dbProvider.getPersistenceStore())
+            context = testConnektContext(storage = dbProvider.getPersistenceStore())
         ) {
             val counterVar by incCounterRequest(counterKey).thenBodyInt()
             // Stays 1 before execution fase
@@ -69,7 +69,7 @@ class DelegateByRequestTest(server: TestServer) : TestWithServer(server) {
 
         println("3d run")
         runScript(
-            context = testConnektContext(persistenceStore = dbProvider.getPersistenceStore())
+            context = testConnektContext(storage = dbProvider.getPersistenceStore())
         ) {
             val counterVar by incCounterRequest(counterKey).thenBodyInt()
             // Should be updated to 2 due before execution fase
