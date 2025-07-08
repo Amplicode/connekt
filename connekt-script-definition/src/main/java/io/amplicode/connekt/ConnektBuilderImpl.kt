@@ -61,7 +61,7 @@ internal class ConnektBuilderImpl(
     }
 
     inner class UpdatableStoredValue<R>(
-        prop: KProperty<*>,
+        private val prop: KProperty<*>,
         requestHolder: ConnektRequestExecutable<R>
     ) : RequestValueDelegate.StoredValue<R> {
 
@@ -69,7 +69,7 @@ internal class ConnektBuilderImpl(
         private val storeMap = context.vars
 
         override var value: R?
-            get() = storeMap.getValue(key)
+            get() = storeMap.getValue(key, prop.getter.returnType)
             set(value) {
                 storeMap.setValue(key, value)
             }

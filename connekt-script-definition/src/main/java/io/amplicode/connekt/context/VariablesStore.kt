@@ -6,8 +6,8 @@
 package io.amplicode.connekt.context
 
 import io.amplicode.connekt.context.persistence.Storage
-import io.amplicode.connekt.context.persistence.getValue
 import kotlin.reflect.KProperty
+import kotlin.reflect.KType
 
 class VariablesStore(val values: Storage) {
     fun string() = DelegateProvider<String>(values)
@@ -16,8 +16,8 @@ class VariablesStore(val values: Storage) {
 
     fun variable() = StoredVariableDelegate(values)
 
-    fun <T> getValue(name: String): T? = values.getValue(name)
     fun <T> setValue(name: String, value: T?) = values.setValue(name, value)
+    fun <T> getValue(name: String, type: KType): T? = values.getValue(name, type)
 }
 
 class DelegateProvider<T>(private val values: Storage) {
@@ -38,7 +38,7 @@ class Variable<T>(
     private val property: KProperty<*>
 ) {
     fun get(): T? {
-        return storage.getValue(property.name) as T?
+        return storage.getValue(property.name, property.getter.returnType) as T?
     }
 
     fun set(value: T) {
@@ -54,14 +54,14 @@ class StoredVariableDelegate(val storage: Storage) {
         thisRef: Any,
         property: KProperty<*>
     ): T {
-        return storage.getValue(property.name)!!
+        return storage.getValue(property.name, property.getter.returnType)!!
     }
 
     inline operator fun <reified T> getValue(
         thisRef: Nothing?,
         property: KProperty<*>
     ): T {
-        return storage.getValue(property.name)!!
+        return storage.getValue(property.name, property.getter.returnType)!!
     }
 
     inline operator fun <reified T> setValue(

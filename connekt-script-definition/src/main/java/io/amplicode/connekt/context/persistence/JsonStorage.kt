@@ -8,7 +8,8 @@ import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createFile
 import kotlin.io.path.notExists
-import kotlin.reflect.KClass
+import kotlin.reflect.KType
+import kotlin.reflect.jvm.javaType
 
 class JsonStorage(
     private val file: Path,
@@ -27,9 +28,10 @@ class JsonStorage(
 
     private val changedData: NodeMap = mutableMapOf()
 
-    override fun <T : Any> getValue(key: String, klass: KClass<T>): T? {
+    override fun <T : Any> getValue(key: String, type: KType): T? {
         val jsonNode = data[key] ?: return null
-        return objectMapper.convertValue<T?>(jsonNode, klass.java)
+        val javaType = objectMapper.constructType(type.javaType)
+        return objectMapper.convertValue(jsonNode, javaType) as? T
     }
 
     override fun setValue(key: String, value: Any?) {

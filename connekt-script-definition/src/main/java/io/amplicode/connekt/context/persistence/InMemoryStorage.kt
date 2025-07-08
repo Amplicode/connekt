@@ -1,7 +1,6 @@
 package io.amplicode.connekt.context.persistence
 
-import kotlin.reflect.KClass
-import kotlin.reflect.safeCast
+import kotlin.reflect.KType
 
 /**
  * A simple in-memory implementation of PersistenceStore.
@@ -10,9 +9,9 @@ import kotlin.reflect.safeCast
 class InMemoryStorage : Storage {
     private val map = mutableMapOf<String, Any?>()
 
-    override fun <T : Any> getValue(key: String, klass: KClass<T>): T? {
+    override fun <T : Any> getValue(key: String, type: KType): T? {
         val value = map[key]
-        return klass.safeCast(value)
+        return value as? T?
     }
 
     override fun setValue(key: String, value: Any?) {

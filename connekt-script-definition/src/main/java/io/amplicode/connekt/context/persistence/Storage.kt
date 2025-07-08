@@ -2,7 +2,7 @@ package io.amplicode.connekt.context.persistence
 
 import java.io.Closeable
 import java.nio.file.Path
-import kotlin.reflect.KClass
+import kotlin.reflect.KType
 
 /**
  * Interface for a persistence store that can store and retrieve objects.
@@ -10,7 +10,7 @@ import kotlin.reflect.KClass
  */
 interface Storage : Closeable {
 
-    fun <T : Any> getValue(key: String, klass: KClass<T>): T?
+    fun <T : Any> getValue(key: String, type: KType): T?
 
     fun setValue(key: String, value: Any?)
 
@@ -22,8 +22,3 @@ interface Storage : Closeable {
 
 fun defaultStorage(directory: Path): Storage =
     JsonStorage(directory.resolve("variables.json"))
-
-
-inline fun <reified T : Any> Storage.getValue(key: String): T? {
-    return getValue(key, T::class)
-}
