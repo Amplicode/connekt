@@ -10,22 +10,18 @@ import kotlin.reflect.KProperty
  * @param T The type of the value managed by the delegate.
  * @param connektContext Provides the application context, including environment details,
  * logging capabilities, client information, and other utilities.
- * @param executable Executes the logic to generate a value when it is not already stored.
- * @param storedValue Holds a potentially precomputed value of type T or null if not initialized.
+ * @param executableWithResult Executes the logic to generate a value when it is not already stored.
+ * @param storedValueProvider Holds a potentially precomputed value of type T or null if not initialized.
  */
-class RequestValueDelegate<T>(
+class StoredValueDelegate<T>(
     private val connektContext: ConnektContext,
-    private val executable: ConnektRequestExecutable<T>,
-    private val storedValue: StoredValue<T>,
+    private val executableWithResult: ExecutableWithResult<T>,
+    private val storedValueProvider: () -> T?,
 ) : ValueDelegateBase<T>() {
 
     override fun getValueImpl(thisRef: Any?, property: KProperty<*>): T {
-        storedValue.value?.let { return it }
+        storedValueProvider()?.let { return it }
         connektContext.printer.println("Initializing value for property `${property.name}`")
-        return executable.execute()
-    }
-
-    interface StoredValue<T> {
-        val value: T?
+        return executableWithResult.execute()
     }
 }

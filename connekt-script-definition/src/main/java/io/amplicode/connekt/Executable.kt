@@ -6,5 +6,6 @@
 package io.amplicode.connekt
 
 abstract class Executable<T> {
+    // TODO make it `Unit`
     internal abstract fun execute(): T
 }

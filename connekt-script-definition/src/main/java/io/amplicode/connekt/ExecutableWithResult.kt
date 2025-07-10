@@ -9,7 +9,7 @@ import okhttp3.Response
  *
  * @param T execution result type
  */
-abstract class ConnektRequestExecutable<T>() : Executable<T>() {
+abstract class ExecutableWithResult<T>() : Executable<T>() {
 
     protected val listeners = mutableListOf<ExecutionListener<T>>()
 
@@ -35,7 +35,7 @@ abstract class ConnektRequestExecutable<T>() : Executable<T>() {
 class RequestHolder(
     private val requestBuilderProvider: RequestBuilderProvider,
     private val context: ConnektContext
-) : ConnektRequestExecutable<Response>() {
+) : ExecutableWithResult<Response>() {
 
     private val executionStrategy
         get() = context.executionContext.getExecutionStrategy(this, context)
@@ -66,9 +66,9 @@ class RequestHolder(
  */
 class MappedRequestHolder<R>(
     private val context: ConnektContext,
-    private val originRequestHolder: ConnektRequestExecutable<Response>,
+    private val originRequestHolder: ExecutableWithResult<Response>,
     private val mapFunction: MapFunction<Response, R>
-) : ConnektRequestExecutable<R>() {
+) : ExecutableWithResult<R>() {
 
     private var response: Response? = null
     private var result: R? = null
@@ -104,7 +104,7 @@ interface ExecutionListener<T> {
     fun onResultObtained(result: T)
 }
 
-fun <T> ConnektRequestExecutable<T>.onResultObtained(handleResult: (T) -> Unit) {
+fun <T> ExecutableWithResult<T>.onResultObtained(handleResult: (T) -> Unit) {
     this.addExecutionListener(object : ExecutionListener<T> {
         override fun onResultObtained(result: T) {
             handleResult(result)
@@ -113,7 +113,7 @@ fun <T> ConnektRequestExecutable<T>.onResultObtained(handleResult: (T) -> Unit) 
 }
 
 private val dummyRequestHolder by lazy {
-    object : ConnektRequestExecutable<Response>() {
+    object : ExecutableWithResult<Response>() {
         override fun doExecute() = throw UnsupportedOperationException()
     }
 }

@@ -46,37 +46,36 @@ internal class ConnektBuilderImpl(
         return requestHolder
     }
 
-    override fun keycloakOAuth(): ConnektRequestExecutable<KeycloakOAuth> {
+    override fun keycloakOAuth(): ExecutableWithResult<KeycloakOAuth> {
         val keycloakOAuthExecutable = KeycloakOAuthExecutable(context)
         context.executionContext.registerExecutable(keycloakOAuthExecutable)
         return keycloakOAuthExecutable
     }
 
-    override operator fun <R> ConnektRequestExecutable<R>.provideDelegate(
+    override operator fun <R> ExecutableWithResult<R>.provideDelegate(
         @Suppress("unused")
         receiver: Any?,
         prop: KProperty<*>
     ): ValueDelegate<R> {
         val storedValue = UpdatableStoredValue<R>(prop, this)
-        return RequestValueDelegate(
+        return StoredValueDelegate(
             context,
             this,
-            storedValue
+            storedValue::value
         )
     }
 
     inner class UpdatableStoredValue<R>(
         private val prop: KProperty<*>,
-        requestHolder: ConnektRequestExecutable<R>
-    ) : RequestValueDelegate.StoredValue<R> {
-
+        requestHolder: ExecutableWithResult<R>
+    ) {
         private val key = prop.name
-        private val storeMap = context.vars
+        private val storage = context.vars
 
-        override var value: R?
-            get() = storeMap.getValue(key, prop.getter.returnType)
+        var value: R?
+            get() = storage.getValue(key, prop.returnType)
             set(value) {
-                storeMap.setValue(key, value)
+                storage.setValue(key, value)
             }
 
         init {

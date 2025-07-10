@@ -1,11 +1,10 @@
 package io.amplicode.connekt.dsl
 
-import io.amplicode.connekt.ConnektRequestExecutable
+import io.amplicode.connekt.ExecutableWithResult
 import io.amplicode.connekt.KeycloakOAuth
 import io.amplicode.connekt.Request
 import io.amplicode.connekt.RequestBuilderCall
 import io.amplicode.connekt.RequestPath
-import io.amplicode.connekt.TokenResponse
 
 interface RequestRegistrator<R> {
     /**
@@ -29,7 +28,7 @@ interface RequestRegistrator<R> {
     ): R
 
     @RequestBuilderCall
-    fun keycloakOAuth(): ConnektRequestExecutable<KeycloakOAuth>
+    fun keycloakOAuth(): ExecutableWithResult<KeycloakOAuth>
 }
 
 @RequestBuilderCall

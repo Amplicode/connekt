@@ -23,7 +23,7 @@ data class TokenResponse(
     val scope: String
 )
 
-class KeycloakOAuthExecutable(private val context: ConnektContext) : ConnektRequestExecutable<KeycloakOAuth>() {
+class KeycloakOAuthExecutable(private val context: ConnektContext) : ExecutableWithResult<KeycloakOAuth>() {
 
     override fun doExecute(): KeycloakOAuth {
         // TODO build auth link on params
