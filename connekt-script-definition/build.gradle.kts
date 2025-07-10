@@ -33,6 +33,11 @@ dependencies {
 
     api("com.github.mrmike:ok2curl:0.8.0")
 
+    // TODO remove same artifacts from `testImplementation`
+    implementation("io.ktor:ktor-server-core:$ktorVersion")
+    implementation("io.ktor:ktor-server-core-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")
+
     testImplementation(kotlin("test"))
     testImplementation("io.ktor:ktor-server-core-jvm:$ktorVersion")
     testImplementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")

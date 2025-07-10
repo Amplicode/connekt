@@ -41,10 +41,15 @@ internal class ConnektBuilderImpl(
         val requestBuilderProvider = RequestBuilderProvider {
             RequestBuilder(method, path, context).apply(configure)
         }
-        val requestsContext = context.executionContext
         val requestHolder = RequestHolder(requestBuilderProvider, context)
-        requestsContext.registerExecutable(requestHolder)
+        context.executionContext.registerExecutable(requestHolder)
         return requestHolder
+    }
+
+    override fun keycloakOAuth(): ConnektRequestExecutable<KeycloakOAuth> {
+        val keycloakOAuthExecutable = KeycloakOAuthExecutable(context)
+        context.executionContext.registerExecutable(keycloakOAuthExecutable)
+        return keycloakOAuthExecutable
     }
 
     override operator fun <R> ConnektRequestExecutable<R>.provideDelegate(

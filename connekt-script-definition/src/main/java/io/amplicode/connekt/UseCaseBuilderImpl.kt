@@ -5,7 +5,6 @@ import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.dsl.JsonPathExtensionsProvider
 import io.amplicode.connekt.dsl.RequestBuilder
 import io.amplicode.connekt.dsl.UseCaseBuilder
-import io.amplicode.connekt.UseCaseValueDelegate
 import okhttp3.Response
 import kotlin.reflect.KProperty
 
@@ -33,5 +32,9 @@ internal class UseCaseBuilderImpl(
         val requestBuilder = RequestBuilder(method, path, context)
             .apply(configure)
         return eachRequestExecutionStrategy.executeRequest(requestBuilder)
+    }
+
+    override fun keycloakOAuth(): ConnektRequestExecutable<KeycloakOAuth> {
+        TODO("Not yet implemented")
     }
 }
