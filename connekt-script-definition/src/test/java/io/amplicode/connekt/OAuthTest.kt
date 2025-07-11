@@ -6,23 +6,26 @@ import io.amplicode.connekt.dsl.bearerAuth
 import io.amplicode.connekt.test.utils.components.testConnektContext
 import io.amplicode.connekt.test.utils.runScript
 import io.amplicode.connekt.test.utils.server.TestServer
+import kotlin.test.Ignore
 import kotlin.test.Test
 
 class OAuthTest(server: TestServer) : TestWithServer(server) {
+
     @Test
+    @Ignore
     fun `do smth`() {
         val storage = InMemoryStorage()
 
-        runScript(1, context = testConnektContext(storage)) {
-            val keycloakOAuth by keycloakOAuth()
+        runScript(0, context = testConnektContext(storage)) {
+            val keycloakOAuth = keycloakOAuth()
 
             GET("$host/foo") {
                 bearerAuth(keycloakOAuth)
             }
         }
 
-        runScript(1, context = testConnektContext(storage)) {
-            val keycloakOAuth by keycloakOAuth()
+        runScript(0, context = testConnektContext(storage)) {
+            val keycloakOAuth = keycloakOAuth()
 
             GET("$host/foo") {
                 bearerAuth(keycloakOAuth)

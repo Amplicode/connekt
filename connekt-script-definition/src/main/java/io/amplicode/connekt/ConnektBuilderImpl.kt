@@ -5,6 +5,7 @@ import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.context.StoredVariableDelegate
 import io.amplicode.connekt.dsl.*
 import kotlin.reflect.KProperty
+import kotlin.reflect.full.createType
 
 fun ConnektBuilder(context: ConnektContext): ConnektBuilder =
     ConnektBuilderImpl(context, JsonExtensionsProviderImpl(context))
@@ -46,10 +47,19 @@ internal class ConnektBuilderImpl(
         return requestHolder
     }
 
-    override fun keycloakOAuth(): ExecutableWithResult<KeycloakOAuth> {
-        val keycloakOAuthExecutable = KeycloakOAuthExecutable(context)
-        context.executionContext.registerExecutable(keycloakOAuthExecutable)
-        return keycloakOAuthExecutable
+    override fun keycloakOAuth(): KeycloakOAuth {
+        return object : KeycloakOAuth(context) {
+            private val storage = vars
+            val storeKey = "keycloakOAuthState"
+
+            override var storedOAuthState: KeycloakOAuthState?
+                get() = storage.getValue(
+                    storeKey,
+                    KeycloakOAuthState::class.createType()
+                )
+                set(value) = storage.setValue(storeKey, value)
+
+        }
     }
 
     override operator fun <R> ExecutableWithResult<R>.provideDelegate(

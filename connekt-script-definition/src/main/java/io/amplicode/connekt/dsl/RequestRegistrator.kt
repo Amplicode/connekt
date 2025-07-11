@@ -28,7 +28,7 @@ interface RequestRegistrator<R> {
     ): R
 
     @RequestBuilderCall
-    fun keycloakOAuth(): ExecutableWithResult<KeycloakOAuth>
+    fun keycloakOAuth(): KeycloakOAuth
 }
 
 @RequestBuilderCall
