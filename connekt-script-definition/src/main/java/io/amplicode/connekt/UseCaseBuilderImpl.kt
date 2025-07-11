@@ -33,8 +33,4 @@ internal class UseCaseBuilderImpl(
             .apply(configure)
         return eachRequestExecutionStrategy.executeRequest(requestBuilder)
     }
-
-    override fun keycloakOAuth(oAuthParameters: KeycloakOAuthParameters): KeycloakOAuth {
-        TODO("Not yet implemented")
-    }
 }

@@ -1,5 +1,6 @@
 package io.amplicode.connekt
 
+import io.amplicode.connekt.auth.KeycloakOAuthParameters
 import io.amplicode.connekt.context.persistence.InMemoryStorage
 import io.amplicode.connekt.dsl.GET
 import io.amplicode.connekt.dsl.bearerAuth
@@ -25,19 +26,19 @@ class OAuthTest(server: TestServer) : TestWithServer(server) {
             8080,
             "/callback"
         )
-        runScript(0, context = testConnektContext(storage)) {
-            val keycloakOAuth = keycloakOAuth(oAuthParameters)
+        runScript(1, context = testConnektContext(storage)) {
+            val keycloakOAuth by oauth(oAuthParameters)
 
             GET("$host/foo") {
-                bearerAuth(keycloakOAuth)
+                bearerAuth(keycloakOAuth.accessToken)
             }
         }
 
-        runScript(0, context = testConnektContext(storage)) {
-            val keycloakOAuth = keycloakOAuth(oAuthParameters)
+        runScript(1, context = testConnektContext(storage)) {
+            val keycloakOAuth by oauth(oAuthParameters)
 
             GET("$host/foo") {
-                bearerAuth(keycloakOAuth)
+                bearerAuth(keycloakOAuth.accessToken)
             }
         }
     }

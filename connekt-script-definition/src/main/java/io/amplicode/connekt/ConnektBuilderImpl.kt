@@ -1,20 +1,26 @@
 package io.amplicode.connekt
 
+import io.amplicode.connekt.auth.KeycloakOAuthParameters
 import io.amplicode.connekt.context.ClientConfigurer
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.context.StoredVariableDelegate
 import io.amplicode.connekt.dsl.*
 import kotlin.reflect.KProperty
-import kotlin.reflect.full.createType
 
 fun ConnektBuilder(context: ConnektContext): ConnektBuilder =
-    ConnektBuilderImpl(context, JsonExtensionsProviderImpl(context))
+    ConnektBuilderImpl(
+        context,
+        JsonExtensionsProviderImpl(context),
+        ConnektAuthExtensionsImpl(context)
+    )
 
 internal class ConnektBuilderImpl(
     private val context: ConnektContext,
-    private val jsonPathExtensions: JsonPathExtensionsProvider
+    private val jsonPathExtensions: JsonPathExtensionsProvider,
+    private val authExtensionsImpl: ConnektAuthExtensionsImpl
 ) : ConnektBuilder,
-    JsonPathExtensionsProvider by jsonPathExtensions {
+    JsonPathExtensionsProvider by jsonPathExtensions,
+    AuthExtensions by authExtensionsImpl {
 
     override val env = context.env
     override val vars = context.vars
@@ -45,20 +51,6 @@ internal class ConnektBuilderImpl(
         val requestHolder = RequestHolder(requestBuilderProvider, context)
         context.executionContext.registerExecutable(requestHolder)
         return requestHolder
-    }
-
-    override fun keycloakOAuth(oAuthParameters: KeycloakOAuthParameters): KeycloakOAuth {
-        return object : KeycloakOAuth(context, oAuthParameters) {
-            private val storage = vars
-            val storeKey = "oauth-state:" + oAuthParameters.tokenUrl
-
-            override var storedOAuthState: KeycloakOAuthState?
-                get() = storage.getValue(
-                    storeKey,
-                    KeycloakOAuthState::class.createType()
-                )
-                set(value) = storage.setValue(storeKey, value)
-        }
     }
 
     override operator fun <R> ExecutableWithResult<R>.provideDelegate(
@@ -109,4 +101,11 @@ private class UseCaseExecutable(
 interface UseCase {
     val name: String?
     fun perform(useCaseBuilder: UseCaseBuilder)
+}
+
+internal val KeycloakOAuthParameters.tokenUrl: String
+    get() = "$serverBaseUrl/realms/$realm/protocol/$protocol/token"
+
+interface TokenProvider {
+    fun getToken(): String
 }

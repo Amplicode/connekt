@@ -1,6 +1,8 @@
 package io.amplicode.connekt.dsl
 
-import io.amplicode.connekt.*
+import io.amplicode.connekt.Request
+import io.amplicode.connekt.RequestBuilderCall
+import io.amplicode.connekt.RequestPath
 
 interface RequestRegistrator<R> {
     /**
@@ -22,9 +24,6 @@ interface RequestRegistrator<R> {
         @RequestPath path: String,
         configure: RequestBuilder.() -> Unit = {}
     ): R
-
-    //    @RequestBuilderCall
-    fun keycloakOAuth(oAuthParameters: KeycloakOAuthParameters): KeycloakOAuth
 }
 
 @RequestBuilderCall

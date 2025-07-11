@@ -1,8 +1,11 @@
-package io.amplicode.connekt
+package io.amplicode.connekt.auth
 
 import com.fasterxml.jackson.module.kotlin.readValue
+import io.amplicode.connekt.DefaultExecutionStrategy
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.dsl.RequestBuilder
+import io.amplicode.connekt.println
+import io.amplicode.connekt.tokenUrl
 import io.ktor.http.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -12,94 +15,20 @@ import io.ktor.server.util.*
 import okhttp3.Response
 import java.util.concurrent.CompletableFuture
 
-
-data class TokenResponse(
-    val access_token: String,
-    val expires_in: Long,
-    val refresh_expires_in: Long,
-    val refresh_token: String,
-    val token_type: String,
-    val id_token: String? = null,
-    val session_state: String,
-    val scope: String
-) {
-    fun toOauthState(): KeycloakOAuthState {
-        val timeNow = System.currentTimeMillis()
-        return KeycloakOAuthState(
-            access_token,
-            expires_in,
-            timeNow,
-            refresh_token,
-            refresh_expires_in,
-            timeNow
-        )
-    }
-}
-
-data class KeycloakOAuthState(
-    val accessToken: String,
-    val accessExpiresIn: Long,
-    val accessIssuedAt: Long,
-
-    val refreshToken: String,
-    val refreshExpiresIn: Long,
-    val refreshIssuedAt: Long
-)
-
-data class KeycloakOAuthParameters(
-    val serverBaseUrl: String,
-    val realm: String,
-    val protocol: String,
-    val clientId: String,
-    val scope: String,
-
-    val callbackPort: Int,
-    val callbackPath: String
-)
-
-internal val KeycloakOAuthParameters.redirectUrl: String
-    get() = buildUrl {
-        protocol = URLProtocol.HTTP
-        host = "localhost"
-        port = callbackPort
-        path(callbackPath)
-    }.toString()
-
-internal val KeycloakOAuthParameters.tokenUrl: String
-    get() = "$serverBaseUrl/realms/$realm/protocol/$protocol/token"
-
-abstract class KeycloakOAuth(
+class KeycloakAuthRunner(
     private val context: ConnektContext,
     private val oAuthParams: KeycloakOAuthParameters
-) : TokenProvider {
+) : BaseAuthRunner() {
 
-    protected abstract var storedOAuthState: KeycloakOAuthState?
-
-    override fun getToken(): String {
-        val oAuthState = getOAuthState()
-        return oAuthState.accessToken
+    override fun refresh(auth: Auth): Auth {
+        return refreshToken(auth.refreshToken)
     }
 
-    fun getOAuthState(): KeycloakOAuthState {
-        try {
-            var oauthState = storedOAuthState
-            if (oauthState == null) {
-                oauthState = startBrowserAuthentication()
-            }
-            if (oauthState.isRefreshTokenExpired()) {
-                oauthState = startBrowserAuthentication()
-            }
-            if (oauthState.isAccessTokenExpired()) {
-                oauthState = refreshToken(oauthState.refreshToken)
-            }
-            storedOAuthState = oauthState
-            return oauthState
-        } catch (e: Exception) {
-            throw RuntimeException("Could not obtain token", e)
-        }
+    override fun authorize(): Auth {
+        return startBrowserAuthentication()
     }
 
-    private fun startBrowserAuthentication(): KeycloakOAuthState {
+    private fun startBrowserAuthentication(): Auth {
         val authLink = createBrowserAuthLink()
         context.printer.println("Please open this link in browser: $authLink")
 
@@ -117,7 +46,7 @@ abstract class KeycloakOAuth(
         val authByCodeRequest = buildTokenRequest(authCode)
         val response = authByCodeRequest.executeRequest()
         val tokenResponse = response.toTokenResponse()
-        return tokenResponse.toOauthState()
+        return tokenResponse.toAuth()
     }
 
     private fun createCallbackServer(authCodeFuture: CompletableFuture<String>): EmbeddedServer<*, *> = embeddedServer(
@@ -159,7 +88,7 @@ abstract class KeycloakOAuth(
                 "&scope=$scope"
     }
 
-    private fun refreshToken(refreshToken: String): KeycloakOAuthState {
+    private fun refreshToken(refreshToken: String): Auth {
         val requestBuilder = RequestBuilder(
             "POST",
             oAuthParams.tokenUrl,
@@ -174,7 +103,7 @@ abstract class KeycloakOAuth(
 
         val response = requestBuilder.executeRequest()
         val tokenResponse = response.toTokenResponse()
-        return tokenResponse.toOauthState()
+        return tokenResponse.toAuth()
     }
 
     private fun RequestBuilder.executeRequest() = DefaultExecutionStrategy(context).executeRequest(this)
@@ -189,22 +118,44 @@ abstract class KeycloakOAuth(
             .objectMapper
             .readValue<TokenResponse>(credentialsString)
     }
-
-    fun KeycloakOAuthState.isRefreshTokenExpired(): Boolean {
-        val expiresAt = refreshExpiresIn * 1000 + refreshIssuedAt
-        val timeToLive = expiresAt - System.currentTimeMillis()
-        context.printer.debugln("Refresh token time to live: ${timeToLive}ms")
-        return timeToLive < 0
-    }
-
-    fun KeycloakOAuthState.isAccessTokenExpired(): Boolean {
-        val expiresAt = accessExpiresIn * 1000 + accessIssuedAt
-        val timeToLive = expiresAt - System.currentTimeMillis()
-        context.printer.debugln("Access token time to live: ${timeToLive}ms")
-        return timeToLive < 0
-    }
 }
 
-interface TokenProvider {
-    fun getToken(): String
+data class TokenResponse(
+    val access_token: String,
+    val expires_in: Long,
+    val refresh_expires_in: Long,
+    val refresh_token: String,
+    val token_type: String,
+    val id_token: String? = null,
+    val session_state: String,
+    val scope: String
+)
+
+fun TokenResponse.toAuth(): Auth {
+    val timeNow = System.currentTimeMillis()
+    return Auth(
+        access_token,
+        refresh_token,
+        timeNow + expires_in * 1000,
+        timeNow + refresh_expires_in * 1000,
+    )
 }
+
+data class KeycloakOAuthParameters(
+    val serverBaseUrl: String,
+    val realm: String,
+    val protocol: String,
+    val clientId: String,
+    val scope: String,
+
+    val callbackPort: Int,
+    val callbackPath: String
+)
+
+internal val KeycloakOAuthParameters.redirectUrl: String
+    get() = buildUrl {
+        protocol = URLProtocol.HTTP
+        host = "localhost"
+        port = callbackPort
+        path(callbackPath)
+    }.toString()

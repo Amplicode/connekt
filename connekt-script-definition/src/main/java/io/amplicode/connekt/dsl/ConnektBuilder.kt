@@ -17,7 +17,11 @@ import io.amplicode.connekt.context.VariablesStore
 import kotlin.reflect.KProperty
 
 @ConnektDsl
-interface ConnektBuilder : RequestRegistrator<RequestHolder>, JsonPathExtensionsProvider {
+interface ConnektBuilder :
+    RequestRegistrator<RequestHolder>,
+    JsonPathExtensionsProvider,
+    AuthExtensions {
+
     val env: EnvironmentStore
     val vars: VariablesStore
 
