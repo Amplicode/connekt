@@ -1,7 +1,6 @@
 package io.amplicode.connekt.dsl
 
 import io.amplicode.connekt.HeaderValue
-import io.amplicode.connekt.TokenProvider
 import java.util.Base64
 
 
@@ -12,13 +11,6 @@ fun RequestBuilder.basicAuth(username: String, password: String) {
 
 fun RequestBuilder.bearerAuth(token: String) {
     header("Authorization", "Bearer $token")
-}
-
-fun RequestBuilder.bearerAuth(tokenProvider: TokenProvider) {
-    configureRequest {
-        val token = tokenProvider.getToken()
-        header("Authorization", "Bearer $token")
-    }
 }
 
 fun RequestBuilder.contentType(@HeaderValue("Content-Type") contentType: String) {

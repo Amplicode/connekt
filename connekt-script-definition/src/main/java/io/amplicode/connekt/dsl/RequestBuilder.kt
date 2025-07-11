@@ -223,17 +223,15 @@ class RequestBuilder(
             }
         }
 
-        if (!noRedirect) {
-            followRedirects(true)
-            followSslRedirects(true)
-        }
+        followRedirects(!noRedirect)
+        followSslRedirects(!noRedirect)
 
         if (http2) {
             protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE))
         }
 
         clientBuilderTweaks.forEach { configure ->
-           configure()
+            configure()
         }
     }
 }

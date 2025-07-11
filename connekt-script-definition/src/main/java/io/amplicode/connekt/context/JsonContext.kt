@@ -25,11 +25,8 @@ class JsonContext() {
         var readContext = jsonPaths[response]
 
         if (readContext == null) {
-            val stream = ByteArrayOutputStream()
-            response.body?.source()?.buffer?.copyTo(stream)
-
             readContext = JsonPath.parse(
-                ByteArrayInputStream(stream.toByteArray()),
+                response.body?.string(),
                 Configuration.builder()
                     .jsonProvider(JacksonJsonProvider(objectMapper))
                     .mappingProvider(JacksonMappingProvider(objectMapper))

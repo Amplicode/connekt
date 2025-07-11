@@ -1,6 +1,5 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.auth.KeycloakOAuthParameters
 import io.amplicode.connekt.context.ClientConfigurer
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.context.StoredVariableDelegate
@@ -101,11 +100,4 @@ private class UseCaseExecutable(
 interface UseCase {
     val name: String?
     fun perform(useCaseBuilder: UseCaseBuilder)
-}
-
-internal val KeycloakOAuthParameters.tokenUrl: String
-    get() = "$serverBaseUrl/realms/$realm/protocol/$protocol/token"
-
-interface TokenProvider {
-    fun getToken(): String
 }
