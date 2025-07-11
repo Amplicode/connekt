@@ -13,7 +13,7 @@ import kotlin.reflect.jvm.javaType
 
 class JsonStorage(
     private val file: Path,
-    val objectMapper: ObjectMapper = defaultObjectMapper
+    val objectMapper: ObjectMapper = defaultObjectMapper,
 ) : Storage {
 
     val data: NodeMap = initStorage()
@@ -31,7 +31,12 @@ class JsonStorage(
     override fun <T : Any> getValue(key: String, type: KType): T? {
         val jsonNode = data[key] ?: return null
         val javaType = objectMapper.constructType(type.javaType)
-        return objectMapper.convertValue(jsonNode, javaType) as? T
+        return try {
+            objectMapper.convertValue(jsonNode, javaType) as? T
+        } catch (e: Exception) {
+            println("Unable to parse $key")
+            null
+        }
     }
 
     override fun setValue(key: String, value: Any?) {

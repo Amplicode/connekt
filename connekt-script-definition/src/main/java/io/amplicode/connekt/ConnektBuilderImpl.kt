@@ -7,13 +7,19 @@ import io.amplicode.connekt.dsl.*
 import kotlin.reflect.KProperty
 
 fun ConnektBuilder(context: ConnektContext): ConnektBuilder =
-    ConnektBuilderImpl(context, JsonExtensionsProviderImpl(context))
+    ConnektBuilderImpl(
+        context,
+        JsonExtensionsProviderImpl(context),
+        ConnektAuthExtensionsImpl(context)
+    )
 
 internal class ConnektBuilderImpl(
     private val context: ConnektContext,
-    private val jsonPathExtensions: JsonPathExtensionsProvider
+    private val jsonPathExtensions: JsonPathExtensionsProvider,
+    private val authExtensionsImpl: ConnektAuthExtensionsImpl
 ) : ConnektBuilder,
-    JsonPathExtensionsProvider by jsonPathExtensions {
+    JsonPathExtensionsProvider by jsonPathExtensions,
+    AuthExtensions by authExtensionsImpl {
 
     override val env = context.env
     override val vars = context.vars
@@ -41,37 +47,35 @@ internal class ConnektBuilderImpl(
         val requestBuilderProvider = RequestBuilderProvider {
             RequestBuilder(method, path, context).apply(configure)
         }
-        val requestsContext = context.executionContext
         val requestHolder = RequestHolder(requestBuilderProvider, context)
-        requestsContext.registerExecutable(requestHolder)
+        context.executionContext.registerExecutable(requestHolder)
         return requestHolder
     }
 
-    override operator fun <R> ConnektRequestExecutable<R>.provideDelegate(
+    override operator fun <R> ExecutableWithResult<R>.provideDelegate(
         @Suppress("unused")
         receiver: Any?,
         prop: KProperty<*>
     ): ValueDelegate<R> {
         val storedValue = UpdatableStoredValue<R>(prop, this)
-        return RequestValueDelegate(
+        return StoredValueDelegate(
             context,
             this,
-            storedValue
+            storedValue::value
         )
     }
 
     inner class UpdatableStoredValue<R>(
         private val prop: KProperty<*>,
-        requestHolder: ConnektRequestExecutable<R>
-    ) : RequestValueDelegate.StoredValue<R> {
-
+        requestHolder: ExecutableWithResult<R>
+    ) {
         private val key = prop.name
-        private val storeMap = context.vars
+        private val storage = context.vars
 
-        override var value: R?
-            get() = storeMap.getValue(key, prop.getter.returnType)
+        var value: R?
+            get() = storage.getValue(key, prop.returnType)
             set(value) {
-                storeMap.setValue(key, value)
+                storage.setValue(key, value)
             }
 
         init {

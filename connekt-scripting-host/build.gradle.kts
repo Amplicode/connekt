@@ -23,7 +23,7 @@ dependencies {
     implementation("com.github.ajalt.clikt:clikt:5.0.1")
 
     // Implementation for slf4j to disable warning
-    implementation("org.slf4j:slf4j-nop:1.7.36")
+    implementation("org.slf4j:slf4j-nop:2.0.7")
 
     testImplementation(kotlin("test"))
     testImplementation("io.ktor:ktor-server-core-jvm:3.0.2")

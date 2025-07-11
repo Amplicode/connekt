@@ -7,7 +7,7 @@
 
 package io.amplicode.connekt.dsl
 
-import io.amplicode.connekt.ConnektRequestExecutable
+import io.amplicode.connekt.ExecutableWithResult
 import io.amplicode.connekt.RequestBuilderCall
 import io.amplicode.connekt.RequestHolder
 import io.amplicode.connekt.context.ClientConfigurer
@@ -17,7 +17,11 @@ import io.amplicode.connekt.context.VariablesStore
 import kotlin.reflect.KProperty
 
 @ConnektDsl
-interface ConnektBuilder : RequestRegistrator<RequestHolder>, JsonPathExtensionsProvider {
+interface ConnektBuilder :
+    RequestRegistrator<RequestHolder>,
+    JsonPathExtensionsProvider,
+    AuthExtensions {
+
     val env: EnvironmentStore
     val vars: VariablesStore
 
@@ -31,7 +35,7 @@ interface ConnektBuilder : RequestRegistrator<RequestHolder>, JsonPathExtensions
         runUseCase: UseCaseBuilder.() -> Unit = {}
     )
 
-    operator fun <R> ConnektRequestExecutable<R>.provideDelegate(
+    operator fun <R> ExecutableWithResult<R>.provideDelegate(
         @Suppress("unused")
         receiver: Any?,
         prop: KProperty<*>
