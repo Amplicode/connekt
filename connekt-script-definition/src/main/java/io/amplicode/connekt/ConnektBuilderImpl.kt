@@ -47,10 +47,10 @@ internal class ConnektBuilderImpl(
         return requestHolder
     }
 
-    override fun keycloakOAuth(): KeycloakOAuth {
-        return object : KeycloakOAuth(context) {
+    override fun keycloakOAuth(oAuthParameters: KeycloakOAuthParameters): KeycloakOAuth {
+        return object : KeycloakOAuth(context, oAuthParameters) {
             private val storage = vars
-            val storeKey = "keycloakOAuthState"
+            val storeKey = "oauth-state:" + oAuthParameters.tokenUrl
 
             override var storedOAuthState: KeycloakOAuthState?
                 get() = storage.getValue(
@@ -58,7 +58,6 @@ internal class ConnektBuilderImpl(
                     KeycloakOAuthState::class.createType()
                 )
                 set(value) = storage.setValue(storeKey, value)
-
         }
     }
 

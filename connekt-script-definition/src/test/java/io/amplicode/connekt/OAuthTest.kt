@@ -16,8 +16,17 @@ class OAuthTest(server: TestServer) : TestWithServer(server) {
     fun `do smth`() {
         val storage = InMemoryStorage()
 
+        val oAuthParameters = KeycloakOAuthParameters(
+            "http://localhost:9081",
+            "petclinic",
+            "openid-connect",
+            "sb",
+            "openid",
+            8080,
+            "/callback"
+        )
         runScript(0, context = testConnektContext(storage)) {
-            val keycloakOAuth = keycloakOAuth()
+            val keycloakOAuth = keycloakOAuth(oAuthParameters)
 
             GET("$host/foo") {
                 bearerAuth(keycloakOAuth)
@@ -25,7 +34,7 @@ class OAuthTest(server: TestServer) : TestWithServer(server) {
         }
 
         runScript(0, context = testConnektContext(storage)) {
-            val keycloakOAuth = keycloakOAuth()
+            val keycloakOAuth = keycloakOAuth(oAuthParameters)
 
             GET("$host/foo") {
                 bearerAuth(keycloakOAuth)
