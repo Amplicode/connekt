@@ -15,7 +15,6 @@ class VariablesStore(val values: Storage) {
     fun <T> obj() = DelegateProvider<T>(values)
 
     fun variable() = StoredVariableDelegate(values)
-//    internal fun
 
     fun <T> setValue(name: String, value: T?) = values.setValue(name, value)
     fun <T> getValue(name: String, type: KType): T? = values.getValue(name, type)

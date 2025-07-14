@@ -13,22 +13,41 @@ import java.net.URL
 import java.net.URLEncoder
 import java.util.concurrent.CompletableFuture
 
+@Suppress("PropertyName")
+interface RefreshTokenInfo {
+    // Google
+    val refresh_token_expires_in: Long?
+
+    // Keycloak
+    val refresh_expires_in: Long?
+
+    fun getRefreshExpiresUnified(): Long {
+        return refresh_token_expires_in
+            ?: refresh_expires_in
+            ?: error("No refresh expiration field")
+    }
+}
+
+@Suppress("PropertyName")
 private data class AccessTokenResponse(
     val access_token: String,
     val expires_in: Long,
     val refresh_token: String,
     val scope: String,
     val token_type: String,
-    val refresh_token_expires_in: Long
-)
+    override val refresh_token_expires_in: Long?,
+    override val refresh_expires_in: Long?
+) : RefreshTokenInfo
 
+@Suppress("PropertyName")
 private data class RefreshTokenResponse(
     val access_token: String,
     val expires_in: Long,
     val scope: String,
     val token_type: String,
-    val refresh_token_expires_in: Long
-)
+    override val refresh_token_expires_in: Long?,
+    override val refresh_expires_in: Long?,
+) : RefreshTokenInfo
 
 class OAuthRunner(
     private val authorizeEndpoint: String,
@@ -76,7 +95,7 @@ class OAuthRunner(
             refreshTokenResponse.access_token,
             auth.refreshToken,
             System.currentTimeMillis() + refreshTokenResponse.expires_in * 1000,
-            System.currentTimeMillis() + refreshTokenResponse.refresh_token_expires_in * 1000
+            System.currentTimeMillis() + refreshTokenResponse.getRefreshExpiresUnified() * 1000
         )
     }
 
@@ -119,7 +138,7 @@ class OAuthRunner(
             accessTokenResponse.access_token,
             accessTokenResponse.refresh_token,
             System.currentTimeMillis() + accessTokenResponse.expires_in * 1000,
-            System.currentTimeMillis() + accessTokenResponse.refresh_token_expires_in * 1000
+            System.currentTimeMillis() + accessTokenResponse.getRefreshExpiresUnified() * 1000
         )
     }
 }
