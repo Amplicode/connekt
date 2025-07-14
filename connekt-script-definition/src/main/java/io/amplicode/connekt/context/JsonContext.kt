@@ -26,7 +26,7 @@ class JsonContext() {
 
         if (readContext == null) {
             readContext = JsonPath.parse(
-                response.body?.string() ?: "",
+                response.body?.string(),
                 Configuration.builder()
                     .jsonProvider(JacksonJsonProvider(objectMapper))
                     .mappingProvider(JacksonMappingProvider(objectMapper))

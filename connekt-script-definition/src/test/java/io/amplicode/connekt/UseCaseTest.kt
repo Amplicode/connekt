@@ -9,6 +9,7 @@ import io.amplicode.connekt.test.utils.runScript
 import io.amplicode.connekt.test.utils.thenBodyString
 import io.amplicode.connekt.test.utils.uuid
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -38,6 +39,7 @@ class UseCaseTest(server: TestServer) : TestWithServer(server) {
                     val request = POST("$host/counter/{counter}/inc") {
                         pathParam("counter", counterKey)
                     }
+
                     @Suppress("UnusedVariable")
                     val prop by request
                 }
@@ -223,6 +225,38 @@ class UseCaseTest(server: TestServer) : TestWithServer(server) {
                     it.body!!.string()
                 )
             }
+        }
+    }.asUnit()
+
+    @Test
+    @Ignore
+    fun `return value in useCase`() = runScript {
+        val requestValue by POST("$host/echo-body") {
+            body("foo")
+        }.then {
+            body!!.string()
+        }
+
+        val useCaseResult by useCase {
+            POST("$host/echo-body") {
+                body("$requestValue bar1")
+            } then {
+                assertEquals(
+                    "foo bar1",
+                    body!!.string()
+                )
+
+                body!!.string()
+            }
+
+            return@useCase ""
+        }
+
+        useCase {
+            assertEquals(
+                "foo bar1",
+                useCaseResult
+            )
         }
     }.asUnit()
 }

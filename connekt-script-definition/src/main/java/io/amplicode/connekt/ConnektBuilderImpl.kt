@@ -29,14 +29,15 @@ internal class ConnektBuilderImpl(
         context.clientContext.globalConfigurer = configure
     }
 
-    override fun useCase(name: String?, runUseCase: UseCaseBuilder.() -> Unit) {
-        val useCase = object : UseCase {
+    override fun <T> useCase(name: String?, runUseCase: UseCaseBuilder.() -> T): UseCaseExecutable<T> {
+        val useCase = object : UseCase<T> {
             override val name: String? = name
             override fun perform(useCaseBuilder: UseCaseBuilder) =
                 useCaseBuilder.runUseCase()
         }
         val useCaseExecutable = UseCaseExecutable(context, useCase)
         context.executionContext.registerExecutable(useCaseExecutable)
+        return useCaseExecutable
     }
 
     override fun request(
@@ -65,6 +66,14 @@ internal class ConnektBuilderImpl(
         )
     }
 
+    override operator fun <R> UseCaseExecutable<R>.provideDelegate(
+        @Suppress("unused")
+        receiver: Any?,
+        prop: KProperty<*>
+    ): ValueDelegate<R> {
+        return UseCaseDelegate(prop, this)
+    }
+
     inner class UpdatableStoredValue<R>(
         private val prop: KProperty<*>,
         requestHolder: ExecutableWithResult<R>
@@ -85,19 +94,61 @@ internal class ConnektBuilderImpl(
             }
         }
     }
-}
 
-private class UseCaseExecutable(
-    private val context: ConnektContext,
-    private val useCase: UseCase
-) : Executable<Unit>() {
-    override fun execute() {
-        val executionStrategy = context.executionContext.getExecutionStrategy(this, context)
-        executionStrategy.executeUseCase(useCase)
+    inner class UseCaseDelegate<R>(
+        private val prop: KProperty<*>,
+        private val executable: UseCaseExecutable<R>,
+    ) : ValueDelegateBase<R>() {
+        private val key = prop.name
+        private val storeMap = context.vars
+
+        init {
+            executable.addListener {
+                storeMap.setValue(key, it)
+            }
+        }
+
+        override fun getValueImpl(
+            thisRef: Any?,
+            property: KProperty<*>
+        ): R {
+            var value = storeMap.getValue<R>(key, prop.returnType)
+
+            if (value == null) {
+                value = executable.execute()
+                storeMap.setValue(key, value)
+            }
+
+            return value!!
+        }
     }
+
 }
 
-interface UseCase {
+interface UseCase<T> {
     val name: String?
-    fun perform(useCaseBuilder: UseCaseBuilder)
+    fun perform(useCaseBuilder: UseCaseBuilder): T
+}
+
+class UseCaseExecutable<T>(
+    private val context: ConnektContext,
+    private val useCase: UseCase<T>
+) : Executable<T>() {
+
+    private val listeners: MutableList<(T) -> Unit> = mutableListOf()
+
+    fun addListener(listener: (T) -> Unit) {
+        listeners.add(listener)
+    }
+
+    override fun execute(): T {
+        val executionStrategy = context.executionContext.getExecutionStrategy(this, context)
+        val value = executionStrategy.executeUseCase(useCase)
+
+        for (listener in listeners) {
+            listener(value)
+        }
+
+        return value
+    }
 }

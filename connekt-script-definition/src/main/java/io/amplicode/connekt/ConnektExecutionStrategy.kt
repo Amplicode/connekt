@@ -25,7 +25,7 @@ interface RequestExecutionStrategy {
  * A class responsible for [UseCase] execution.
  */
 interface UseCaseExecutionStrategy {
-    fun executeUseCase(useCase: UseCase)
+    fun <T> executeUseCase(useCase: UseCase<T>): T
 }
 
 interface ConnektExecutionStrategy : RequestExecutionStrategy, UseCaseExecutionStrategy {
@@ -48,11 +48,11 @@ class DefaultExecutionStrategy(private val context: ConnektContext) :
 
     override fun isMappingAllowed() = true
 
-    override fun executeUseCase(useCase: UseCase) {
+    override fun <T> executeUseCase(useCase: UseCase<T>) : T {
         val effectiveUseCaseName = useCase.name ?: "Unnamed"
         context.printer.println("Running useCase: $effectiveUseCaseName")
         val useCaseBuilder = UseCaseBuilderImpl(context, this)
-        useCase.perform(useCaseBuilder)
+        return useCase.perform(useCaseBuilder)
     }
 }
 
@@ -71,7 +71,7 @@ class CurlExecutionStrategy(private val context: ConnektContext) :
 
     override fun isMappingAllowed() = false
 
-    override fun executeUseCase(useCase: UseCase) {
+    override fun <T> executeUseCase(useCase: UseCase<T>): T {
         val useCaseBuilder = UseCaseBuilderImpl(
             context,
             CurlRequestExecutionStrategy(
@@ -81,7 +81,7 @@ class CurlExecutionStrategy(private val context: ConnektContext) :
                 }
             )
         )
-        useCase.perform(useCaseBuilder)
+        return useCase.perform(useCaseBuilder)
     }
 }
 
