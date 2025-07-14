@@ -1,8 +1,8 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.auth.KeycloakOAuthParameters
 import io.amplicode.connekt.context.persistence.InMemoryStorage
 import io.amplicode.connekt.dsl.GET
+import io.amplicode.connekt.dsl.KeycloakOAuthParameters
 import io.amplicode.connekt.dsl.bearerAuth
 import io.amplicode.connekt.test.utils.components.testConnektContext
 import io.amplicode.connekt.test.utils.runScript
@@ -22,6 +22,7 @@ class OAuthTest(server: TestServer) : TestWithServer(server) {
             "petclinic",
             "openid-connect",
             "sb",
+            null,
             "openid",
             8080,
             "/callback"
