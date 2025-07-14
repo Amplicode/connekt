@@ -27,5 +27,8 @@ fun ReadContext.readBoolean(@Language("JSONPath") path: String): Boolean {
 
 interface JsonPathExtensionsProvider {
     fun Response.jsonPath(): ReadContext
-    fun <T> ReadContext.readList(path: String, clazz: Class<T>): List<T>
+    fun <T> ReadContext.readList(
+        @Language("JSONPath") path: String,
+        clazz: Class<T>
+    ): List<T>
 }
