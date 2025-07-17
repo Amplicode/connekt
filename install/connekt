@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+
+IMAGE=${CONNEKT_IMAGE:-ghcr.io/amplicode/connekt:0.2.10}
+VERSION_FILE="$HOME/.connekt/version"
+mkdir -p "$(dirname "$VERSION_FILE")"
+echo "$IMAGE" > "$VERSION_FILE"
+
+ENV_FILE=""
+ENV_NAME=""
+ENV_PARAM_ARGS=""
+SCRIPT_PATHS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -env)
+      ENV_FILE="$2"
+      shift 2
+      ;;
+    -envname)
+      ENV_NAME="$2"
+      shift 2
+      ;;
+    -envparams)
+      shift
+      while [[ $# -gt 0 ]] && [[ "$1" != -* ]]; do
+        ENV_PARAM_ARGS="$ENV_PARAM_ARGS --env-param $1"
+        shift
+      done
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      exit 1
+      ;;
+    *)
+      SCRIPT_PATHS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+  echo "🔄 Docker image $IMAGE not found locally. Pulling..."
+  docker pull "$IMAGE"
+fi
+
+[ -n "$ENV_FILE" ] && ENV_FILE_MOUNT="-v $(realpath "$ENV_FILE"):/connekt/scripts/connekt.env.json"
+[ -n "$ENV_FILE" ] && ENV_FILE_ARG="--env-file=scripts/connekt.env.json"
+[ -n "$ENV_NAME" ] && ENV_NAME_ARG="--env-name=$ENV_NAME"
+
+for filepath in "${SCRIPT_PATHS[@]}"; do
+  [ -n "$filepath" ] || continue
+  filename=$(basename "$filepath")
+  dirpath=$(dirname "$filepath")
+
+  echo "🚀 Running $filename..."
+
+  docker run --rm \
+    --add-host=host.docker.internal:host-gateway \
+    -v "$dirpath":/connekt/scripts \
+    $ENV_FILE_MOUNT \
+    "$IMAGE" \
+    $ENV_NAME_ARG \
+    $ENV_FILE_ARG \
+    --script=scripts/"$filename" \
+    $ENV_PARAM_ARGS
+done

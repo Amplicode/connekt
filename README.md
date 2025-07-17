@@ -2,6 +2,12 @@
 
 Connekt is a powerful Kotlin-based HTTP scripting tool designed for API testing, automation, and integration tasks. It provides a clean, type-safe syntax for defining and executing HTTP operations.
 
+## CLI
+
+```bash
+curl -sSf https://raw.githubusercontent.com/Amplicode/connekt/main/install/install.sh | bash
+```
+
 ## Overview
 
 Connekt consists of two main modules:
