@@ -49,12 +49,6 @@ application {
     mainClass = "io.amplicode.connekt.EvaluatorKt"
 }
 
-distributions {
-    main {
-        distributionBaseName.set("connekt-cli")
-    }
-}
-
 publishing {
     publications {
         create<MavenPublication>("distribution") {
