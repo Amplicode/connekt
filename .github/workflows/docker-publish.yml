@@ -41,7 +41,7 @@ jobs:
       - name: Build and push (multi-platform)
         uses: docker/build-push-action@v5
         with:
-          context: connekt-cli
+          context: connekt-scripting-host
           push: true
           tags: ghcr.io/amplicode/connekt:${{ env.RELEASE_VERSION }}
           platforms: linux/amd64,linux/arm64
