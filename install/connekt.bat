@@ -10,38 +10,38 @@ set "SCRIPT_ARGS="
 
 rem === PARSE ARGS ===
 :parse_args
-if "%~1"=="" goto after_args
+if "%~1"=="" goto :after_args
 
 if /i "%~1"=="-env" (
 set "ENV_FILE=%~2"
 shift
 shift
-goto parse_args
+goto :parse_args
 )
 
 if /i "%~1"=="-envname" (
 set "ENV_NAME=%~2"
 shift
 shift
-goto parse_args
+goto :parse_args
 )
 
 if /i "%~1"=="-envparams" (
 shift
 :envparam_loop
-if "%~1"=="" goto parse_args
-if "%~1"=="-env" goto parse_args
-if "%~1"=="-envname" goto parse_args
-if "%~1"=="-envparams" goto parse_args
+if "%~1"=="" goto :parse_args
+if "%~1"=="-env" goto :parse_args
+if "%~1"=="-envname" goto :parse_args
+if "%~1"=="-envparams" goto :parse_args
 set "ENV_PARAM_ARGS=!ENV_PARAM_ARGS! --env-param %~1"
 shift
-goto envparam_loop
+goto :envparam_loop
 )
 
 rem default: treat as script
 set "SCRIPT_ARGS=!SCRIPT_ARGS! %~1"
 shift
-goto parse_args
+goto :parse_args
 
 :after_args
 
