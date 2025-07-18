@@ -2,10 +2,49 @@
 
 Connekt is a powerful Kotlin-based HTTP scripting tool designed for API testing, automation, and integration tasks. It provides a clean, type-safe syntax for defining and executing HTTP operations.
 
-## CLI
+## 📦️ Connekt CLI Installer
+
+The Connekt installer sets up a CLI tool that allows you to run Kotlin scripts inside a Dockerized runtime with
+environment support.
+
+### What it does:
+
+* Downloads the connekt launcher script (bash or batch version)
+* Installs it into your home directory at:
+
+  * \~/.connekt (Unix/macOS)
+  * %USERPROFILE%.connekt (Windows)
+* Adds \~/.connekt or %USERPROFILE%.connekt to your PATH if needed
+* Makes the connekt command available in your terminal
+* Does not download Docker images during install — images are pulled lazily on first script run
+
+### Requirements:
+
+* Docker must be installed and running
+* curl must be available (preinstalled on macOS, most Linux, and Windows 10+)
+* On Windows:
+
+  * Use CMD, PowerShell, or Git Bash
+  * connekt.bat is used under the hood
+
+### Install via:
+
+**Unix/MacOS**
+
+```Bash
+curl -sSf https://raw.githubusercontent.com/Amplicode/connekt/main/install/install.sh | bash
+```
+
+**Windows**
+
+```Batch
+curl -fsSL https://raw.githubusercontent.com/Amplicode/connekt/main/install/install.bat -o %TEMP%\install-connekt.bat && %TEMP%\install-connekt.bat
+```
+
+### Usage:
 
 ```bash
-curl -sSf https://raw.githubusercontent.com/Amplicode/connekt/main/install/install.sh | bash
+connekt my-script.kts
 ```
 
 ## Overview
