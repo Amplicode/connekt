@@ -31,6 +31,8 @@ Connekt consists of two main modules:
   - JSON parsing with JSONPath
   - Response validation
   - File downloads
+- **Handling Authoruzation**
+  - OAuth2 Authorization Code
 - **State Management**:
   - Variables store for sharing data between requests
   - Environment configuration
