@@ -48,7 +48,7 @@ goto :parse_args
 rem === Check if Docker image exists locally ===
 docker image inspect "%IMAGE%" >nul 2>&1
 if errorlevel 1 (
-echo 🔄 Docker image %IMAGE% not found locally. Pulling...
+echo Docker image %IMAGE% not found locally. Pulling...
 docker pull "%IMAGE%"
 )
 
@@ -72,7 +72,7 @@ for %%S in (%SCRIPT_ARGS%) do (
 for %%F in ("%%~fS") do (
 set "DIR=%%~dpF"
 set "FILE=%%~nxF"
-echo 🚀 Running !FILE! ...
+echo Running !FILE! ...
 docker run --rm ^
 --add-host=host.docker.internal:host-gateway ^
 -v "!DIR!:/connekt/scripts" ^
