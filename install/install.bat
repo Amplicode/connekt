@@ -2,10 +2,10 @@
 setlocal EnableDelayedExpansion
 
 REM === Configuration ===
-set INSTALL_DIR=%USERPROFILE%.connekt
+set INSTALL_DIR=%USERPROFILE%\.connekt
 set BIN_NAME=connekt.bat
 set BIN_URL=https://raw.githubusercontent.com/Amplicode/connekt/main/install/connekt.bat
-set BIN_PATH=%INSTALL_DIR%%BIN_NAME%
+set BIN_PATH=%INSTALL_DIR%\%BIN_NAME%
 
 REM === Check if curl exists ===
 where curl >nul 2>&1
