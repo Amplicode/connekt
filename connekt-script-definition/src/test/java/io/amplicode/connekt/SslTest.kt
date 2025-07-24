@@ -3,6 +3,7 @@ package io.amplicode.connekt
 import io.amplicode.connekt.dsl.GET
 import io.amplicode.connekt.dsl.addX509Certificate
 import io.amplicode.connekt.dsl.addKeyStore
+import io.amplicode.connekt.dsl.insecure
 import io.amplicode.connekt.test.utils.server.ServerSslParams
 import io.amplicode.connekt.test.utils.server.TestServer
 import io.amplicode.connekt.test.utils.asUnit
@@ -107,6 +108,17 @@ class SslTest(server: TestServer) : TestWithServer(server) {
     fun `self-signed pem via ext function`() = runScript {
         configureClient {
             addX509Certificate(sslParams.certPemFile)
+        }
+
+        GET("$hostHttps/foo") then {
+            assertEquals("foo", body?.string())
+        }
+    }.asUnit()
+
+    @Test
+    fun `insecure via ext function`() = runScript {
+        configureClient {
+            insecure()
         }
 
         GET("$hostHttps/foo") then {

@@ -6,6 +6,7 @@ import java.security.KeyStore
 import java.security.SecureRandom
 import java.security.cert.Certificate
 import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
@@ -83,4 +84,32 @@ fun OkHttpClient.Builder.addKeyStore(keyStoreFile: File, keystorePassword: Strin
         sslContext.socketFactory,
         trustManager
     )
+}
+
+/**
+ * Configures the [OkHttpClient.Builder] so that SSL/TLS certificate verification is disabled.
+ *
+ * This method creates a trust-all-certificates [X509TrustManager] which accepts any certificate.
+ * Using this configuration makes your application vulnerable to man-in-the-middle attacks because it
+ * will accept invalid or untrusted certificates.
+ *
+ * **IMPORTANT:** NEVER USE THIS METHOD IN PRODUCTION! Disabling SSL certificate validation exposes sensitive data
+ * and can lead to security breaches.
+ */
+fun OkHttpClient.Builder.insecure() {
+
+    val trustAllCerts = object : X509TrustManager {
+        override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+
+        override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+
+        override fun getAcceptedIssuers(): Array<out X509Certificate>? = emptyArray()
+    }
+
+    val sslContext = SSLContext.getInstance("TLS")
+    sslContext.init(null, arrayOf(trustAllCerts), SecureRandom())
+
+
+    sslSocketFactory(sslContext.socketFactory, trustAllCerts)
+
 }
