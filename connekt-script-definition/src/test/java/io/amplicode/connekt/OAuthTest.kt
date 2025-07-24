@@ -4,6 +4,7 @@ import io.amplicode.connekt.context.persistence.InMemoryStorage
 import io.amplicode.connekt.dsl.GET
 import io.amplicode.connekt.dsl.KeycloakOAuthParameters
 import io.amplicode.connekt.dsl.bearerAuth
+import io.amplicode.connekt.dsl.oauth
 import io.amplicode.connekt.test.utils.components.testConnektContext
 import io.amplicode.connekt.test.utils.runScript
 import io.amplicode.connekt.test.utils.server.TestServer
