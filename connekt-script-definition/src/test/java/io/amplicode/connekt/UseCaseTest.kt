@@ -2,12 +2,8 @@ package io.amplicode.connekt
 
 import io.amplicode.connekt.dsl.GET
 import io.amplicode.connekt.dsl.POST
-import io.amplicode.connekt.test.utils.asInt
-import io.amplicode.connekt.test.utils.asUnit
+import io.amplicode.connekt.test.utils.*
 import io.amplicode.connekt.test.utils.server.TestServer
-import io.amplicode.connekt.test.utils.runScript
-import io.amplicode.connekt.test.utils.thenBodyString
-import io.amplicode.connekt.test.utils.uuid
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import kotlin.test.Ignore
 import kotlin.test.Test
@@ -259,5 +255,20 @@ class UseCaseTest(server: TestServer) : TestWithServer(server) {
             )
         }
     }.asUnit()
+
+    @Test
+    fun `useCase delegate`() {
+        runScript {
+            val useCaseResult by useCase {
+                POST("$host/echo-body") {
+                    body("foo")
+                }
+
+                "myResult"
+            }
+
+            assertEquals("myResult", useCaseResult)
+        }
+    }
 }
 
