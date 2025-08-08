@@ -56,13 +56,13 @@ environment support.
 * Downloads the Connekt launcher script (bash or batch version)
 * Installs it into your home directory at:
 
-  * `~/.connekt` (Unix/macOS)
+  * `~/.connekt` (Linux/MacOS)
   * `%USERPROFILE%\.connekt` (Windows)
 * Adds `~/.connekt` or `%USERPROFILE%\.connekt` to your `PATH` if needed
 * Makes the `connekt` command available in your terminal
 * Does not download Docker images during install — images are pulled lazily on first script run
 
-#### Unix/MacOS
+#### Linux/MacOS
 
 ```Bash
 curl -sSf https://raw.githubusercontent.com/Amplicode/connekt/main/install/install.sh | bash
