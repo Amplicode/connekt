@@ -7,10 +7,7 @@
 
 package io.amplicode.connekt.dsl
 
-import io.amplicode.connekt.ExecutableWithResult
-import io.amplicode.connekt.RequestBuilderCall
-import io.amplicode.connekt.RequestHolder
-import io.amplicode.connekt.UseCaseExecutable
+import io.amplicode.connekt.*
 import io.amplicode.connekt.context.ClientConfigurer
 import io.amplicode.connekt.context.EnvironmentStore
 import io.amplicode.connekt.context.StoredVariableDelegate
@@ -32,7 +29,7 @@ interface ConnektBuilder :
 
     @RequestBuilderCall
     fun <T> useCase(
-        name: String? = null,
+        @RequestName name: String? = null,
         runUseCase: UseCaseBuilder.() -> T
     ): UseCaseExecutable<T>
 

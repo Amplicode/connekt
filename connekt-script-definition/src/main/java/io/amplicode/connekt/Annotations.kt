@@ -20,10 +20,16 @@ annotation class Request(
 )
 
 /**
- * Used to mark string arguments that contain request path
+ * Used to mark string arguments that contain the request path
  */
 @Target(AnnotationTarget.VALUE_PARAMETER)
 annotation class RequestPath
+
+/**
+ * Used to mark string arguments that contain the request path
+ */
+@Target(AnnotationTarget.VALUE_PARAMETER)
+annotation class RequestName
 
 @Target(AnnotationTarget.VALUE_PARAMETER)
 annotation class HeaderName

@@ -27,6 +27,7 @@ internal class UseCaseBuilderImpl(
     override fun request(
         method: String,
         path: String,
+        name: String?,
         configure: RequestBuilder.() -> Unit
     ): Response {
         val requestBuilder = RequestBuilder(method, path, context)

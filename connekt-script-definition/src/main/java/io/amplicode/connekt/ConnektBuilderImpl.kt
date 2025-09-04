@@ -43,6 +43,7 @@ internal class ConnektBuilderImpl(
     override fun request(
         method: String,
         path: String,
+        name: String?,
         configure: RequestBuilder.() -> Unit
     ): RequestHolder {
         val requestBuilderProvider = RequestBuilderProvider {
