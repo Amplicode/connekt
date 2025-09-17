@@ -6,6 +6,7 @@ import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.ScriptDiagnostic
 import kotlin.script.experimental.api.SourceCode
 import kotlin.script.experimental.jvm.util.isError
+import kotlin.system.exitProcess
 
 data class EvaluatorOptions(
     val requestNumber: Int?,
@@ -51,11 +52,15 @@ fun runScript(
         ?.error
         ?.printStackTrace()
 
-    result.reports.forEach {
-        it.exception?.printStackTrace()
-        if (it.severity > ScriptDiagnostic.Severity.DEBUG) {
-            println(" : ${it.message}" + if (it.exception == null) "" else ": ${it.exception}")
+    result.reports.forEach { diagnostic ->
+        if (diagnostic.severity > ScriptDiagnostic.Severity.DEBUG) {
+            val message = diagnostic.render()
+            System.err.println(message)
         }
+    }
+
+    if (result.isError()) {
+        exitProcess(1)
     }
 
     when {
