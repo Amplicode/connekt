@@ -7,6 +7,7 @@ package io.amplicode.connekt
 
 import io.amplicode.connekt.dsl.ConnektBuilder
 import java.io.File
+import java.io.File.pathSeparator
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.jvm.BasicJvmScriptEvaluator
@@ -25,6 +26,14 @@ class ConnektScriptingHost(
     // that should be used to run the Evaluator.
     private val jvmTarget = "1.8"
 
+    private val powerAssertJar by lazy {
+        System.getProperty("java.class.path")
+            .split(pathSeparator)
+            .map(::File)
+            .firstOrNull { it.name.startsWith("kotlin-power-assert-compiler-plugin-embeddable") && it.extension == "jar" }
+            ?: error("Power-Assert plugin jar not found on classpath")
+    }
+
     private val compilationConfiguration =
         createJvmCompilationConfigurationFromTemplate<Connekt> {
             compilerOptions(
@@ -32,7 +41,11 @@ class ConnektScriptingHost(
                     "use-fast-jar-file-system",
                     "false",
                     "-Xadd-modules=ALL-MODULE-PATH",
-                    "-jvm-target=$jvmTarget"
+                    "-jvm-target=$jvmTarget",
+                    "-Xplugin=${powerAssertJar.absolutePath}",
+                    "-P",
+                    "plugin:org.jetbrains.kotlin.powerassert:function=kotlin.assert",
+                    "plugin:org.jetbrains.kotlin.powerassert:function=kotlin.require",
                 )
             )
         }
