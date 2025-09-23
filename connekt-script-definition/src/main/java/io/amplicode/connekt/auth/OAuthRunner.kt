@@ -1,9 +1,9 @@
 package io.amplicode.connekt.auth
 
 import com.sun.net.httpserver.HttpServer
-import io.amplicode.connekt.Executable
 import io.amplicode.connekt.Printer
 import io.amplicode.connekt.context.ConnektContext
+import io.amplicode.connekt.context.execution.Executable
 import io.amplicode.connekt.dsl.RequestBuilder
 import io.amplicode.connekt.dsl.doRead
 import io.amplicode.connekt.println
@@ -62,9 +62,15 @@ class OAuthRunner(
     private val jsonContext = connektContext.jsonContext
 
     fun refresh(auth: Auth): Auth {
-        val response = connektContext.executionContext.getExecutionStrategy(this, connektContext)
+        val response = connektContext.executionContext
+            .getExecutionStrategy(this)
             .executeRequest(
-                RequestBuilder("POST", tokenEndpoint, connektContext).apply {
+                connektContext,
+                RequestBuilder(
+                    "POST",
+                    tokenEndpoint,
+                    connektContext
+                ).apply {
                     headers("Content-Type" to "application/x-www-form-urlencoded")
 
                     formData {
@@ -113,8 +119,10 @@ class OAuthRunner(
 
         val authCode = waitForAuthCode(redirectUri)
 
-        val response = connektContext.executionContext.getExecutionStrategy(this, connektContext)
+        val response = connektContext.executionContext
+            .getExecutionStrategy(this)
             .executeRequest(
+                connektContext,
                 RequestBuilder("POST", tokenEndpoint, connektContext).apply {
                     headers("Content-Type" to "application/x-www-form-urlencoded")
 

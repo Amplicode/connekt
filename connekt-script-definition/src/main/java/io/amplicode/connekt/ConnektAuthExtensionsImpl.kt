@@ -1,6 +1,7 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.auth.*
+import io.amplicode.connekt.auth.Auth
+import io.amplicode.connekt.auth.OAuthRunner
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.dsl.AuthExtensions
 import io.amplicode.connekt.dsl.ValueDelegate
@@ -29,7 +30,8 @@ class ConnektAuthExtensionsImpl(
         )
 
         context.executionContext.registerExecutable(
-            authRunner
+            authRunner,
+            null
         )
 
         return authRunner

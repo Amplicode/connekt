@@ -1,17 +1,15 @@
-package io.amplicode.connekt
+package io.amplicode.connekt.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.parameters.options.check
-import com.github.ajalt.clikt.parameters.options.default
-import com.github.ajalt.clikt.parameters.options.flag
-import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.options.transformAll
-import com.github.ajalt.clikt.parameters.options.validate
-import com.github.ajalt.clikt.parameters.types.choice
+import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.enum
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.path
+import io.amplicode.connekt.context.execution.DeclarationCoordinates
+import io.amplicode.connekt.context.execution.ExecutionScenario
+import io.amplicode.connekt.execution.ExecutionMode
+import java.nio.file.Path
 import java.nio.file.Paths
 
 abstract class AbstractConnektCommand : CliktCommand("Connekt") {
@@ -24,6 +22,8 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
                 "If omitted, all requests will be executed sequentially. " +
                 "If less than or equal to 0, the script will be compiled and executed, ignoring requests."
     ).int()
+
+    val requestName by option(help = "Name of the request to be executed")
 
     val envFile by option(help = "Environment file")
         .file(mustExist = true, canBeDir = false, mustBeReadable = true)
@@ -67,6 +67,7 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
         names = arrayOf("--compile-only"),
         help = "Run in compile only mode. The script will be compiled but will not be evaluated"
     ).flag(default = false)
+        .deprecated("Use execution mode 'COMPILE_ONLY' instead")
 
     val version by option(help = "Connekt version")
         .flag(default = false)
@@ -76,9 +77,12 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
         .default(ExecutionMode.DEFAULT)
         .validate { mode ->
             when (mode) {
-                ExecutionMode.CURL -> require(requestNumber != null) {
-                    "CURL execution mode is available for a single request execution only"
+                ExecutionMode.CURL -> {
+                    require(executionScenario is ExecutionScenario.SingleExecution) {
+                        "CURL execution mode is available for a single request execution only"
+                    }
                 }
+
                 else -> {
                     // Do nothing
                 }
@@ -86,12 +90,23 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
         }
 }
 
-enum class ExecutionMode {
-    DEFAULT,
-    CURL
-}
+val AbstractConnektCommand.executionScenario: ExecutionScenario
+    get() {
+        requestNumber?.let { number ->
+            if (number > 0) {
+                return ExecutionScenario.SingleExecution(DeclarationCoordinates(number - 1))
+            }
+            return ExecutionScenario.File
+        }
 
-private val connektHome = run {
+        requestName?.let { name ->
+            return ExecutionScenario.SingleExecution(DeclarationCoordinates(name))
+        }
+
+        return ExecutionScenario.File
+    }
+
+private val connektHome: Path by lazy {
     val userHome = System.getProperty("user.home")
     requireNotNull(userHome) {
         "System property 'user.home' must be set"

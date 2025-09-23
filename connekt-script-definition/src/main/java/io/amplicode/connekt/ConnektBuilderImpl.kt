@@ -3,6 +3,8 @@ package io.amplicode.connekt
 import io.amplicode.connekt.context.ClientConfigurer
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.context.StoredVariableDelegate
+import io.amplicode.connekt.context.execution.DeclarationCoordinates
+import io.amplicode.connekt.context.execution.Executable
 import io.amplicode.connekt.dsl.*
 import kotlin.reflect.KProperty
 
@@ -36,7 +38,7 @@ internal class ConnektBuilderImpl(
                 useCaseBuilder.runUseCase()
         }
         val useCaseExecutable = UseCaseExecutable(context, useCase)
-        context.executionContext.registerExecutable(useCaseExecutable)
+        context.executionContext.registerExecutable(useCaseExecutable, name)
         return useCaseExecutable
     }
 
@@ -50,7 +52,7 @@ internal class ConnektBuilderImpl(
             RequestBuilder(method, path, context).apply(configure)
         }
         val requestHolder = RequestHolder(requestBuilderProvider, context)
-        context.executionContext.registerExecutable(requestHolder)
+        context.executionContext.registerExecutable(requestHolder, name)
         return requestHolder
     }
 
@@ -59,10 +61,13 @@ internal class ConnektBuilderImpl(
         receiver: Any?,
         prop: KProperty<*>
     ): ValueDelegate<R> {
-        val storedValue = UpdatableStoredValue<R>(prop, this)
+        val executable = this
+        // Register this declaration with delegating property name
+        registerExecutableWithPropName(prop, executable.originalExecutable)
+        val storedValue = UpdatableStoredValue(prop, executable)
         return StoredValueDelegate(
             context,
-            this,
+            executable,
             storedValue::value
         )
     }
@@ -72,7 +77,15 @@ internal class ConnektBuilderImpl(
         receiver: Any?,
         prop: KProperty<*>
     ): ValueDelegate<R> {
-        return UseCaseDelegate(prop, this)
+        val executable = this
+        // Register this declaration with delegating property name
+        registerExecutableWithPropName(prop, executable)
+        return UseCaseDelegate(prop, executable)
+    }
+
+    private fun registerExecutableWithPropName(prop: KProperty<*>, executable: Executable<*>) {
+        val coordinates = DeclarationCoordinates(prop.name)
+        context.executionContext.addCoordinatesForExecutable(coordinates, executable)
     }
 
     inner class UpdatableStoredValue<R>(
@@ -143,8 +156,8 @@ class UseCaseExecutable<T>(
     }
 
     override fun execute(): T {
-        val executionStrategy = context.executionContext.getExecutionStrategy(this, context)
-        val value = executionStrategy.executeUseCase(useCase)
+        val executionStrategy = context.executionContext.getExecutionStrategy(this)
+        val value = executionStrategy.executeUseCase(context, useCase)
 
         for (listener in listeners) {
             listener(value)

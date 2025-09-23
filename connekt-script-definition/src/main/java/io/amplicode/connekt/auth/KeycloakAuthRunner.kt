@@ -1,13 +1,6 @@
 package io.amplicode.connekt.auth
 
-import com.fasterxml.jackson.module.kotlin.readValue
-import io.amplicode.connekt.DefaultExecutionStrategy
-import io.amplicode.connekt.context.ConnektContext
-import io.amplicode.connekt.dsl.RequestBuilder
-import io.amplicode.connekt.println
 //import io.amplicode.connekt.tokenUrl
-import okhttp3.Response
-import java.util.concurrent.CompletableFuture
 
 //class KeycloakAuthRunner(
 //    private val context: ConnektContext,

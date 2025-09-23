@@ -1,17 +1,16 @@
-package io.amplicode.connekt
+package io.amplicode.connekt.execution
 
-import io.amplicode.connekt.context.ClientContextImpl
-import io.amplicode.connekt.context.createConnektContext
-import io.amplicode.connekt.context.NoEnvironmentPropertyException
-import io.amplicode.connekt.context.NoopEnvironmentStore
-import io.amplicode.connekt.context.NoopCookiesContext
+import io.amplicode.connekt.ConnektInterceptor
+import io.amplicode.connekt.SystemOutPrinter
+import io.amplicode.connekt.context.*
+import io.amplicode.connekt.context.execution.ExecutionScenario
+import io.amplicode.connekt.context.persistence.InMemoryStorage
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
-import io.amplicode.connekt.context.persistence.InMemoryStorage
 import kotlin.script.experimental.api.EvaluationResult
 import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.isError
@@ -33,7 +32,7 @@ class EvaluatorTest {
 
                 }
             """.trimIndent(),
-            1
+            ExecutionScenario.File
         )
         val error = result.returnValueAsError?.error
         assertIs<NoEnvironmentPropertyException>(error)
@@ -79,7 +78,7 @@ class EvaluatorTest {
 
                 }
                 """.trimIndent(),
-                1
+                ExecutionScenario.Companion.SingleExecution(1)
             )
         }
     }
@@ -99,7 +98,7 @@ class EvaluatorTest {
                     queryParam("my-param", fooRequest)
                 }
                 """.trimIndent(),
-                1
+                ExecutionScenario.Companion.SingleExecution(1)
             )
         }
     }
@@ -132,7 +131,7 @@ class EvaluatorTest {
 
     private fun evaluate(
         @Language("kotlin") scriptText: String,
-        requestNumber: Int? = null
+        executionScenario: ExecutionScenario
     ): ResultWithDiagnostics<EvaluationResult> {
         val persistenceStore = InMemoryStorage()
         val printer = SystemOutPrinter
@@ -144,25 +143,24 @@ class EvaluatorTest {
             printer
         )
 
-        context.use {
-            return runScript(
-                EvaluatorOptions(
-                    requestNumber,
-                    compileOnly = false,
-                    debugLog = false,
-                    compilationCache = false
-                ),
-                context,
-                StringScriptSource(scriptText),
+        return ConnektScript(
+            context,
+            StringScriptSource(scriptText)
+        ).run(
+            EvaluatorOptions(
+                executionScenario,
+                debugLog = false,
+                compilationCache = false,
+                executionMode = ExecutionMode.DEFAULT
             )
-        }
+        )
     }
 
     private fun evaluateThrowing(
         @Language("kotlin") scriptText: String,
-        requestNumber: Int? = null
+        executionScenario: ExecutionScenario = ExecutionScenario.File
     ) {
-        val result = evaluate(scriptText, requestNumber)
+        val result = evaluate(scriptText, executionScenario)
         result.assertNoCompileAndRuntimeErrors()
     }
 

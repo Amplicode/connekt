@@ -3,8 +3,10 @@
  * Use is subject to license terms.
  */
 
-package io.amplicode.connekt
+package io.amplicode.connekt.execution
 
+import io.amplicode.connekt.Connekt
+import io.amplicode.connekt.connektVersion
 import io.amplicode.connekt.dsl.ConnektBuilder
 import java.io.File
 import kotlin.script.experimental.api.*
@@ -17,8 +19,8 @@ import kotlin.script.experimental.jvmhost.CompiledScriptJarsCache
 import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromTemplate
 
 class ConnektScriptingHost(
-    private val useCompilationCache: Boolean = true,
-    private val compileOnly: Boolean = false,
+    private val useCompilationCache: Boolean,
+    private val compileOnly: Boolean,
 ) {
     // A jvm target version used for script compilation.
     // This version also determines minimal JDK version

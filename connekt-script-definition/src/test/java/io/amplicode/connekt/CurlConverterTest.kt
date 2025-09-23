@@ -1,9 +1,11 @@
 package io.amplicode.connekt
 
 import io.amplicode.connekt.context.ConnektContext
-import io.amplicode.connekt.dsl.ConnektBuilder
+import io.amplicode.connekt.context.execution.DeclarationCoordinates
+import io.amplicode.connekt.context.execution.hasCoordinates
 import io.amplicode.connekt.dsl.GET
 import io.amplicode.connekt.dsl.POST
+import io.amplicode.connekt.test.utils.ScriptStatement
 import io.amplicode.connekt.test.utils.components.testConnektContext
 import io.amplicode.connekt.test.utils.runScript
 import io.amplicode.connekt.test.utils.server.TestServer
@@ -17,24 +19,20 @@ class CurlConverterTest(testServer: TestServer) : TestWithServer(testServer) {
 
     @Test
     fun `test curl execution make no real request`() {
-        val context = testConnektContext()
-            .curlRequest(0)
-            .curlRequest(2)
-
         val counterId = uuid()
         var isGetCounterCalled = false
-        runScript(context = context) {
+        ScriptStatement {
+            it.withCurlExecutionStrategy(0, 2)
+        }.applyScript {
             val counterPath = "$host/counter/$counterId"
-
             POST("$counterPath/inc")
             GET(counterPath) then {
                 isGetCounterCalled = true
                 // Check the real `/inc` request was not called
-                assertTrue(body!!.string().toInt() == 0)
+                assertEquals(body!!.string().toInt(), 0)
             }
             GET(counterPath)
-        }
-
+        }.evaluate()
         assertTrue(
             isGetCounterCalled,
             "Expected 'getCounter' to be called, but it wasn't"
@@ -43,9 +41,11 @@ class CurlConverterTest(testServer: TestServer) : TestWithServer(testServer) {
 
     @Test
     fun `test curl command text`() {
-        val output = runSingleCurl {
-            GET("$host/foo")
-        }
+        val output = ScriptStatement {
+            it.withCurlExecutionStrategy(0)
+        }.applyScript {
+            GET("${host}/foo")
+        }.evaluate()
         assertEquals(
             """
                 |curl -X GET -H "User-Agent:connekt/0.0.1" "$host/foo"
@@ -57,19 +57,22 @@ class CurlConverterTest(testServer: TestServer) : TestWithServer(testServer) {
 
     @Test
     fun `test then is ignored`() {
-        runSingleCurl {
-            GET("$host/foo") then {
+        ScriptStatement {
+            it.withCurlExecutionStrategy(0)
+        }.applyScript {
+            GET("${host}/foo") then {
                 fail("Then should not be called")
             }
-        }
+        }.evaluate()
     }
 
     @Test
     fun `test curl command text for useCase`() {
-        val output = runSingleCurl {
+        val context = testConnektContext().withCurlExecutionStrategy(0)
+        val output = runScript(context = context) {
             useCase("my-use-case") {
-                GET("$host/foo")
-                GET("$host/bar")
+                GET("${host}/foo")
+                GET("${host}/bar")
             }
         }
 
@@ -85,26 +88,25 @@ class CurlConverterTest(testServer: TestServer) : TestWithServer(testServer) {
 
     @Test
     fun `test not fail with empty useCase`() {
-        runSingleCurl {
+        val context = testConnektContext().withCurlExecutionStrategy(0)
+        // noop
+        runScript(context = context) {
+            // noop
+            // noop
             useCase {
                 // noop
             }
         }
     }
 
-    private fun ConnektContext.curlRequest(i: Int) = apply {
-        val context = this
-        executionContext.apply {
-            registerExecutionStrategyForRequest(i, CurlExecutionStrategy(context))
-        }
-    }
-
-    private fun runSingleCurl(configureBuilder: ConnektBuilder.() -> Unit): String {
-        val context = testConnektContext()
-            .curlRequest(0)
-
-        return runScript(context = context) {
-            configureBuilder()
+    private fun ConnektContext.withCurlExecutionStrategy(vararg requestNumbers: Int) = this.apply {
+        val coordinates = requestNumbers.map(::DeclarationCoordinates).toTypedArray()
+        executionContext.addRegistrationCustomizer { registration ->
+            if (registration.hasCoordinates(*coordinates)) {
+                registration.executionStrategy =
+                    _root_ide_package_.io.amplicode.connekt.context.execution.CurlExecutionStrategy()
+            }
+            registration
         }
     }
 }

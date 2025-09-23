@@ -1,6 +1,7 @@
 package io.amplicode.connekt
 
 import io.amplicode.connekt.context.ConnektContext
+import io.amplicode.connekt.context.execution.Executable
 import io.amplicode.connekt.dsl.RequestBuilder
 import okhttp3.Response
 
@@ -10,6 +11,8 @@ import okhttp3.Response
  * @param T execution result type
  */
 abstract class ExecutableWithResult<T>() : Executable<T>() {
+
+    abstract val originalExecutable: Executable<*>
 
     protected val listeners = mutableListOf<ExecutionListener<T>>()
 
@@ -33,16 +36,18 @@ abstract class ExecutableWithResult<T>() : Executable<T>() {
 }
 
 class RequestHolder(
-    private val requestBuilderProvider: RequestBuilderProvider,
-    private val context: ConnektContext
+    val requestBuilderProvider: RequestBuilderProvider,
+    val context: ConnektContext
 ) : ExecutableWithResult<Response>() {
 
+    override val originalExecutable = this
+
     private val executionStrategy
-        get() = context.executionContext.getExecutionStrategy(this, context)
+        get() = context.executionContext.getExecutionStrategy(this)
 
     override fun doExecute(): Response {
         val requestBuilder = requestBuilderProvider.getRequestBuilder()
-        val response = executionStrategy.executeRequest(requestBuilder)
+        val response = executionStrategy.executeRequest(context, requestBuilder)
         return response
     }
 
@@ -50,14 +55,7 @@ class RequestHolder(
      * Provides controls to handle response
      */
     infix fun <R> then(mapFunction: MapFunction<Response, R>): MappedRequestHolder<R> {
-        val upstreamRequestHolder = if (executionStrategy.isMappingAllowed()) {
-            this
-        } else {
-            // Provide a request holder that never executes.
-            // So mapping never triggerred.
-            dummyRequestHolder
-        }
-        return MappedRequestHolder(context, upstreamRequestHolder, mapFunction)
+        return executionStrategy.mapRequestExecutable(context, this, mapFunction)
     }
 }
 
@@ -69,6 +67,8 @@ class MappedRequestHolder<R>(
     private val originRequestHolder: ExecutableWithResult<Response>,
     private val mapFunction: MapFunction<Response, R>
 ) : ExecutableWithResult<R>() {
+
+    override val originalExecutable = originRequestHolder
 
     private var response: Response? = null
     private var result: R? = null
@@ -110,12 +110,6 @@ fun <T> ExecutableWithResult<T>.onResultObtained(handleResult: (T) -> Unit) {
             handleResult(result)
         }
     })
-}
-
-private val dummyRequestHolder by lazy {
-    object : ExecutableWithResult<Response>() {
-        override fun doExecute() = throw UnsupportedOperationException()
-    }
 }
 
 fun interface RequestBuilderProvider {

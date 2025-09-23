@@ -2,6 +2,7 @@ package io.amplicode.connekt
 
 import com.jayway.jsonpath.ReadContext
 import io.amplicode.connekt.context.ConnektContext
+import io.amplicode.connekt.context.execution.RequestExecutionStrategy
 import io.amplicode.connekt.dsl.JsonPathExtensionsProvider
 import io.amplicode.connekt.dsl.RequestBuilder
 import io.amplicode.connekt.dsl.UseCaseBuilder
@@ -32,6 +33,6 @@ internal class UseCaseBuilderImpl(
     ): Response {
         val requestBuilder = RequestBuilder(method, path, context)
             .apply(configure)
-        return eachRequestExecutionStrategy.executeRequest(requestBuilder)
+        return eachRequestExecutionStrategy.executeRequest(context, requestBuilder)
     }
 }
