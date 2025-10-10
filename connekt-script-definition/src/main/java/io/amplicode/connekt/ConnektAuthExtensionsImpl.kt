@@ -3,6 +3,7 @@ package io.amplicode.connekt
 import io.amplicode.connekt.auth.Auth
 import io.amplicode.connekt.auth.OAuthRunner
 import io.amplicode.connekt.context.ConnektContext
+import io.amplicode.connekt.context.execution.DeclarationCoordinates
 import io.amplicode.connekt.dsl.AuthExtensions
 import io.amplicode.connekt.dsl.ValueDelegate
 import kotlin.reflect.KProperty
@@ -41,6 +42,9 @@ class ConnektAuthExtensionsImpl(
         receiver: Any?,
         prop: KProperty<*>
     ): ValueDelegate<Auth> {
+        val oAuthRunner = this
+        val coordinates = DeclarationCoordinates(prop.name)
+        context.executionContext.addCoordinatesForExecutable(coordinates, oAuthRunner)
         return AuthValueDelegate(prop, this, context)
     }
 }
