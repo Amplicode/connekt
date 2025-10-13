@@ -1,28 +1,13 @@
 package io.amplicode.connekt.test.utils.server
 
-import io.ktor.http.ContentDisposition
-import io.ktor.http.ContentType
-import io.ktor.http.Cookie
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.http.content.staticResources
-import io.ktor.server.request.receive
-import io.ktor.server.request.receiveParameters
-import io.ktor.server.request.receiveText
-import io.ktor.server.request.uri
-import io.ktor.server.response.header
-import io.ktor.server.response.respond
-import io.ktor.server.response.respondOutputStream
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.Routing
-import io.ktor.server.routing.RoutingContext
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
-import io.ktor.server.util.getOrFail
-import io.ktor.util.toMap
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.http.content.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import io.ktor.server.util.*
+import io.ktor.util.*
 import kotlinx.serialization.Serializable
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -44,6 +29,7 @@ fun Application.configureRouting() {
             index = null
         )
         downloadApi()
+        oauthApi()
     }
 }
 

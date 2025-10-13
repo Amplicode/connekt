@@ -40,6 +40,7 @@ dependencies {
     testImplementation("io.ktor:ktor-network-tls-certificates:$ktorVersion")
     testImplementation("org.bouncycastle:bcpkix-jdk15on:1.70")
     testImplementation("org.junit.platform:junit-platform-launcher")
+    testImplementation("io.ktor:ktor-server-resources:$ktorVersion")
 }
 
 // Copy sources into the jar to attach them in IDE

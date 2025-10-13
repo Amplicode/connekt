@@ -5,6 +5,7 @@ import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.resources.*
 import io.ktor.util.*
 import kotlinx.coroutines.runBlocking
 
@@ -43,7 +44,7 @@ private fun createTestServer(sslParams: ServerSslParams) = embeddedServer(
         install(ContentNegotiation) {
             json()
         }
-
+        install(Resources)
         configureRouting()
     }
 )

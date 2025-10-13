@@ -52,31 +52,37 @@ class ConnektAuthExtensionsImpl(
 private class AuthValueDelegate(
     private val prop: KProperty<*>,
     private val runner: OAuthRunner,
-    private val context: ConnektContext
+    context: ConnektContext
 ) : ValueDelegateBase<Auth>() {
     private val key = prop.name
     private val storeMap = context.vars
+
+    init {
+        // The OAuth declaration might be called outside the delegate context.
+        // So this delegate needs to be able to know about such events
+        // to update auth state to the actual one.
+        runner.addListener(object : OAuthRunner.Listener {
+            override fun onResult(auth: Auth) {
+                storeMap.setValue(key, auth)
+            }
+
+            override fun onWaitAuthCode(authUrl: String) {
+                // do nothing
+            }
+        })
+    }
 
     override fun getValueImpl(
         thisRef: Any?,
         property: KProperty<*>
     ): Auth {
-        var auth = storeMap.getValue<Auth>(key, prop.returnType)
-
+        val auth = storeMap.getValue<Auth>(key, prop.returnType)
         val currentTime = System.currentTimeMillis()
-
-        auth = when {
+        return when {
             auth == null -> runner.authorize()
-
             currentTime > auth.refreshTokenExpirationTs -> runner.authorize()
-
             currentTime > auth.accessTokenExpirationTs -> runner.refresh(auth)
-
             else -> auth
         }
-
-        storeMap.setValue(key, auth)
-
-        return auth
     }
 }

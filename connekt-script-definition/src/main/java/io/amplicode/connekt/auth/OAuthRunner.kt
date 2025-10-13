@@ -97,27 +97,38 @@ class OAuthRunner(
 
         println(refreshTokenResponse)
 
-        return Auth(
+        val newAuth = Auth(
             refreshTokenResponse.access_token,
             auth.refreshToken,
             System.currentTimeMillis() + refreshTokenResponse.expires_in * 1000,
             System.currentTimeMillis() + refreshTokenResponse.getRefreshExpiresUnified() * 1000
         )
+        fireOnResult(newAuth)
+        return newAuth
     }
 
     fun authorize(): Auth = execute()
 
     override fun execute(): Auth {
-        val authUrl = "$authorizeEndpoint?client_id=$clientId&response_type=code&redirect_uri=${redirectUri}&scope=${
-            URLEncoder.encode(
-                scope,
-                "UTF-8"
-            )
-        }&access_type=offline&prompt=consent"
+        val authUrl = "$authorizeEndpoint?" +
+                "client_id=$clientId" +
+                "&response_type=code" +
+                "&redirect_uri=${redirectUri}" +
+                "&scope=${
+                    URLEncoder.encode(
+                        scope,
+                        "UTF-8"
+                    )
+                }" +
+                "&access_type=offline" +
+                "&prompt=consent"
 
         connektContext.printer.println(authUrl)
 
-        val authCode = waitForAuthCode(redirectUri)
+        val authCode = waitForAuthCode(
+            redirectUri,
+            onStart = { fireWaitingAuthCode(authUrl) }
+        )
 
         val response = connektContext.executionContext
             .getExecutionStrategy(this)
@@ -140,18 +151,48 @@ class OAuthRunner(
                 }
             )
 
+        require(response.code == 200) {
+            "Failed to get access token: $response"
+        }
         val accessTokenResponse = jsonContext.getReadContext(response).doRead<AccessTokenResponse>("$")
 
-        return Auth(
+        val auth = Auth(
             accessTokenResponse.access_token,
             accessTokenResponse.refresh_token,
             System.currentTimeMillis() + accessTokenResponse.expires_in * 1000,
             System.currentTimeMillis() + accessTokenResponse.getRefreshExpiresUnified() * 1000
         )
+        fireOnResult(auth)
+        return auth
+    }
+
+    private fun fireOnResult(auth: Auth) {
+        callListeners { it.onResult(auth) }
+    }
+
+    private fun fireWaitingAuthCode(authUrl: String) {
+        callListeners { it.onWaitAuthCode(authUrl) }
+    }
+
+    private fun callListeners(action: (Listener) -> Unit) =
+        listeners.forEach(action)
+
+    private val listeners: MutableList<Listener> = mutableListOf()
+
+    fun addListener(listener: Listener) {
+        listeners += listener
+    }
+
+    interface Listener {
+        fun onResult(auth: Auth) {}
+        fun onWaitAuthCode(authUrl: String) {}
     }
 }
 
-private fun waitForAuthCode(redirectUri: String): String {
+private fun waitForAuthCode(
+    redirectUri: String,
+    onStart: () -> Unit
+): String {
     val redirectUrl = URL(redirectUri)
     val port = redirectUrl.port
     val path = redirectUrl.path
@@ -186,9 +227,9 @@ private fun waitForAuthCode(redirectUri: String): String {
 
     server.start()
     println("Waiting for authorization ...")
+    onStart()
 
     val code = future.get() // блокируется, пока не получит код
     server.stop(0)
     return code
 }
-
