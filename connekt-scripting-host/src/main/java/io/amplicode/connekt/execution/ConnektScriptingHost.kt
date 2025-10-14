@@ -9,6 +9,7 @@ import io.amplicode.connekt.Connekt
 import io.amplicode.connekt.connektVersion
 import io.amplicode.connekt.dsl.ConnektBuilder
 import java.io.File
+import java.io.File.pathSeparator
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.jvm.BasicJvmScriptEvaluator
@@ -21,24 +22,14 @@ import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromT
 class ConnektScriptingHost(
     private val useCompilationCache: Boolean,
     private val compileOnly: Boolean,
+    private val enablePowerAssert: Boolean,
+    /**
+     * A jvm target version used for script compilation.
+     * This version also determines a minimal JDK version
+     * that should be used to run the Evaluator.
+     */
+    private val jvmTarget: String = "1.8"
 ) {
-    // A jvm target version used for script compilation.
-    // This version also determines minimal JDK version
-    // that should be used to run the Evaluator.
-    private val jvmTarget = "1.8"
-
-    private val compilationConfiguration =
-        createJvmCompilationConfigurationFromTemplate<Connekt> {
-            compilerOptions(
-                listOf(
-                    "use-fast-jar-file-system",
-                    "false",
-                    "-Xadd-modules=ALL-MODULE-PATH",
-                    "-jvm-target=$jvmTarget"
-                )
-            )
-        }
-
     fun evalScript(
         connektBuilder: ConnektBuilder,
         scriptSourceCode: SourceCode
@@ -46,11 +37,30 @@ class ConnektScriptingHost(
         val scriptingHost = createScriptingHost()
         return scriptingHost.eval(
             scriptSourceCode,
-            compilationConfiguration,
+            createJvmCompilationConfigurationFromTemplate<Connekt> {
+                compilerOptions(buildCompilerOptions())
+            },
             ScriptEvaluationConfiguration {
                 implicitReceivers(connektBuilder)
             }
         )
+    }
+
+    private fun buildCompilerOptions() = buildList {
+        addAll(
+            "use-fast-jar-file-system",
+            "false",
+            "-Xadd-modules=ALL-MODULE-PATH",
+            "-jvm-target=$jvmTarget"
+        )
+        if (enablePowerAssert) {
+            addAll(
+                "-Xplugin=${findPowerAssertJarInClasspath().absolutePath}",
+                "-P",
+                "plugin:org.jetbrains.kotlin.powerassert:function=kotlin.assert",
+                "plugin:org.jetbrains.kotlin.powerassert:function=kotlin.require",
+            )
+        }
     }
 
     private fun createScriptingHost(): BasicJvmScriptingHost {
@@ -91,6 +101,8 @@ class ConnektScriptingHost(
                 cacheFileName
             )
         }
+
+    private fun MutableList<String>.addAll(vararg values: String) = addAll(values)
 }
 
 val ResultWithDiagnostics<EvaluationResult>.returnValueAsError
@@ -112,3 +124,9 @@ private class NoopScriptEvaluator(
         )
     }
 }
+
+private fun findPowerAssertJarInClasspath(): File = System.getProperty("java.class.path")
+    .split(pathSeparator)
+    .map(::File)
+    .firstOrNull { it.name.startsWith("kotlin-power-assert-compiler-plugin-embeddable") && it.extension == "jar" }
+    ?: error("Power-Assert plugin jar not found on classpath")

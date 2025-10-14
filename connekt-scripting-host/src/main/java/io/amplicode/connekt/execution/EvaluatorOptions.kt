@@ -6,5 +6,6 @@ data class EvaluatorOptions(
     val executionScenario: ExecutionScenario,
     val debugLog: Boolean,
     val compilationCache: Boolean,
-    val executionMode: ExecutionMode
+    val executionMode: ExecutionMode,
+    val enablePowerAssert: Boolean
 )

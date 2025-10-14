@@ -88,6 +88,11 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
                 }
             }
         }
+
+    val kotlinPowerAssert by option(
+        names = arrayOf("--kotlin-power-assert"),
+        help = "Enable Kotlin Power Assert"
+    ).flag(default = false)
 }
 
 val AbstractConnektCommand.executionScenario: ExecutionScenario

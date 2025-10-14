@@ -151,7 +151,8 @@ class EvaluatorTest {
                 executionScenario,
                 debugLog = false,
                 compilationCache = false,
-                executionMode = ExecutionMode.DEFAULT
+                executionMode = ExecutionMode.DEFAULT,
+                false
             )
         )
     }

@@ -36,12 +36,14 @@ class ConnektScript(
             executionScenario,
             debugLog,
             compilationCache,
-            executionMode
+            executionMode,
+            enablePowerAssert
         ) = options
         if (debugLog) printOptions(options)
         val connektScriptingHost = ConnektScriptingHost(
             compilationCache,
             executionMode == COMPILE_ONLY,
+            enablePowerAssert
         )
         val result = connektScriptingHost.evalScript(
             ConnektBuilder(context),

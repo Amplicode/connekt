@@ -20,6 +20,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-scripting-common")
     implementation("org.jetbrains.kotlin:kotlin-scripting-jvm")
     implementation("org.jetbrains.kotlin:kotlin-scripting-jvm-host")
+    implementation("org.jetbrains.kotlin:kotlin-power-assert-compiler-plugin-embeddable")
     implementation("com.github.ajalt.clikt:clikt:5.0.1")
 
     // Implementation for slf4j to disable warning

@@ -22,7 +22,8 @@ internal class ConnektCommand : AbstractConnektCommand() {
             executionScenario,
             debugLog,
             compilationCache,
-            effectiveExecutionMode
+            effectiveExecutionMode,
+            kotlinPowerAssert
         )
         connektScript.run(options)
     }
