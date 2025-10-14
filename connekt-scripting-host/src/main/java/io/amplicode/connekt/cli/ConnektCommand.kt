@@ -15,14 +15,14 @@ internal class ConnektCommand : AbstractConnektCommand() {
         }
         val scriptFile = script ?: return
         val connektScript = ConnektScript(
-            createContext(),
+            createConnektContext(this),
             FileScriptSource(scriptFile)
         )
         val options = EvaluatorOptions(
             executionScenario,
             debugLog,
             compilationCache,
-            executionMode
+            effectiveExecutionMode
         )
         connektScript.run(options)
     }

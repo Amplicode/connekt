@@ -106,6 +106,9 @@ val AbstractConnektCommand.executionScenario: ExecutionScenario
         return ExecutionScenario.File
     }
 
+val AbstractConnektCommand.effectiveExecutionMode
+    get() = if (compileOnly) ExecutionMode.COMPILE_ONLY else executionMode
+
 private val connektHome: Path by lazy {
     val userHome = System.getProperty("user.home")
     requireNotNull(userHome) {

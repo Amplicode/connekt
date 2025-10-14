@@ -9,13 +9,14 @@ import io.amplicode.connekt.context.execution.hasCoordinates
 import io.amplicode.connekt.context.persistence.InMemoryStorage
 import io.amplicode.connekt.context.persistence.defaultStorage
 import io.amplicode.connekt.execution.ExecutionMode
+import io.amplicode.connekt.execution.ExecutionMode.COMPILE_ONLY
 import kotlin.io.path.createFile
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.notExists
 
 
-fun AbstractConnektCommand.createContext(): ConnektContext {
-    if (compileOnly) {
+fun createConnektContext(command: AbstractConnektCommand): ConnektContext {
+    if (command.effectiveExecutionMode == COMPILE_ONLY) {
         val printer = SystemOutPrinter
         return createConnektContext(
             InMemoryStorage(),
@@ -26,12 +27,12 @@ fun AbstractConnektCommand.createContext(): ConnektContext {
         )
     }
 
-    val storageFile = storageFile
+    val storageFile = command.storageFile
 
     // Ensure the parent directory exists
     storageFile.createParentDirectories()
 
-    val cookiesFile = cookiesFile
+    val cookiesFile = command.cookiesFile
     if (cookiesFile.notExists()) {
         cookiesFile.createFile()
     }
@@ -42,16 +43,16 @@ fun AbstractConnektCommand.createContext(): ConnektContext {
     val printer = SystemOutPrinter
     val context = createConnektContext(
         defaultStorage(storageFile),
-        createEnvStore(this),
+        createEnvStore(command),
         cookiesContext,
-        ClientContextImpl(ConnektInterceptor(printer, responseDir)),
+        ClientContextImpl(ConnektInterceptor(printer, command.responseDir)),
         printer
     ).onClose {
         connektLifeCycleCallbacks.fireClosed()
     }
 
-    if (executionMode == ExecutionMode.CURL) {
-        val executionScenario = executionScenario
+    if (command.effectiveExecutionMode == ExecutionMode.CURL) {
+        val executionScenario = command.executionScenario
         require(executionScenario is ExecutionScenario.SingleExecution)
         context.executionContext.addRegistrationCustomizer { registration ->
             if (registration.hasCoordinates(executionScenario.declarationCoordinates)) {

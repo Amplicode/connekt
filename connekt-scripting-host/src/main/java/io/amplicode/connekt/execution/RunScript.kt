@@ -5,6 +5,7 @@ import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.debugln
 import io.amplicode.connekt.execution.ExecutionMode.COMPILE_ONLY
 import io.amplicode.connekt.println
+import java.lang.reflect.Modifier
 import kotlin.script.experimental.api.EvaluationResult
 import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.ScriptDiagnostic
@@ -80,6 +81,7 @@ class ConnektScript(
         options::class.java
             .declaredFields
             .asSequence()
+            .filter { it.modifiers == Modifier.PUBLIC }
             .map { field ->
                 field.name to field.get(options)
             }
