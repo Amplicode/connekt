@@ -8,9 +8,7 @@ import io.amplicode.connekt.dsl.AuthExtensions
 import io.amplicode.connekt.dsl.ValueDelegate
 import kotlin.reflect.KProperty
 
-class ConnektAuthExtensionsImpl(
-    private val context: ConnektContext
-) : AuthExtensions {
+class ConnektAuthExtensionsImpl(private val context: ConnektContext) : AuthExtensions {
 
     override fun oauth(
         authorizeEndpoint: String,
@@ -55,7 +53,7 @@ private class AuthValueDelegate(
     context: ConnektContext
 ) : ValueDelegateBase<Auth>() {
     private val key = prop.name
-    private val storeMap = context.vars
+    private val storeMap = context.variablesStore
 
     init {
         // The OAuth declaration might be called outside the delegate context.

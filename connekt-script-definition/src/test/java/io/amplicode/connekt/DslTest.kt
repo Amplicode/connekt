@@ -21,7 +21,10 @@ import org.junit.jupiter.api.assertThrows
 import org.opentest4j.AssertionFailedError
 import kotlin.io.path.createTempFile
 import kotlin.io.path.writeText
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DslTest(server: TestServer) : TestWithServer(server) {
@@ -32,7 +35,9 @@ class DslTest(server: TestServer) : TestWithServer(server) {
         envStore["one"] = 1
         envStore["two"] = "2"
 
-        runScript(context = testConnektContext(environmentStore = envStore)) {
+        runScript(
+            context = testConnektContext { it.environmentStore = envStore }
+        ) {
             val one: Int by env
             val two: String by env
             GET("$host/foo?p=$one") {

@@ -1,6 +1,5 @@
 package io.amplicode.connekt.test.utils
 
-import io.amplicode.connekt.ConnektBuilder
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.context.execution.ExecutionScenario
 import io.amplicode.connekt.dsl.ConnektBuilder
@@ -46,7 +45,9 @@ class ScriptStatement(val context: ConnektContext = testConnektContext()) {
         require(!isScriptApplied) {
             "Script is already applied"
         }
-        ConnektBuilder(context).buildScript()
+        context.connektBuilderFactory
+            .createConnektBuilder()
+            .buildScript()
         isScriptApplied = true
         return this
     }

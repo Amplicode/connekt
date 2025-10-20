@@ -37,19 +37,14 @@ fun createConnektContext(command: AbstractConnektCommand): ConnektContext {
         cookiesFile.createFile()
     }
 
-    val connektLifeCycleCallbacks = ConnektLifeCycleCallbacksImpl()
-    val cookiesContext = CookiesContextImpl(cookiesFile, connektLifeCycleCallbacks)
-
     val printer = SystemOutPrinter
     val context = createConnektContext(
         defaultStorage(storageFile),
         createEnvStore(command),
-        cookiesContext,
+        CookiesContextImpl(cookiesFile),
         ClientContextImpl(ConnektInterceptor(printer, command.responseDir)),
         printer
-    ).onClose {
-        connektLifeCycleCallbacks.fireClosed()
-    }
+    )
 
     if (command.effectiveExecutionMode == ExecutionMode.CURL) {
         val executionScenario = command.executionScenario

@@ -8,23 +8,13 @@ import io.amplicode.connekt.context.execution.Executable
 import io.amplicode.connekt.dsl.*
 import kotlin.reflect.KProperty
 
-fun ConnektBuilder(context: ConnektContext): ConnektBuilder =
-    ConnektBuilderImpl(
-        context,
-        JsonExtensionsProviderImpl(context),
-        ConnektAuthExtensionsImpl(context)
-    )
+internal class ConnektBuilderImpl(private val context: ConnektContext) :
+    ConnektBuilder,
+    JsonPathExtensionsProvider by context.jsonPathExtensionsProvider,
+    AuthExtensions by context.authExtensions {
 
-internal class ConnektBuilderImpl(
-    private val context: ConnektContext,
-    private val jsonPathExtensions: JsonPathExtensionsProvider,
-    private val authExtensionsImpl: ConnektAuthExtensionsImpl
-) : ConnektBuilder,
-    JsonPathExtensionsProvider by jsonPathExtensions,
-    AuthExtensions by authExtensionsImpl {
-
-    override val env = context.env
-    override val vars = context.vars
+    override val env = context.environmentStore
+    override val vars = context.variablesStore
     override fun variable(): StoredVariableDelegate = vars.variable()
 
     override fun configureClient(configure: ClientConfigurer) {
@@ -93,7 +83,7 @@ internal class ConnektBuilderImpl(
         requestHolder: ExecutableWithResult<R>
     ) {
         private val key = prop.name
-        private val storage = context.vars
+        private val storage = context.variablesStore
 
         var value: R?
             get() = storage.getValue(key, prop.returnType)
@@ -114,7 +104,7 @@ internal class ConnektBuilderImpl(
         private val executable: UseCaseExecutable<R>,
     ) : ValueDelegateBase<R>() {
         private val key = prop.name
-        private val storeMap = context.vars
+        private val storeMap = context.variablesStore
 
         init {
             executable.addListener {

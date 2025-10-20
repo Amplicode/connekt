@@ -11,16 +11,14 @@ import java.nio.file.Path
 
 fun testConnektContext(
     storage: Storage = InMemoryStorage(),
-    environmentStore: EnvironmentStore = NoopEnvironmentStore,
-    cookiesContextFactory: (ConnektLifeCycleCallbacks) -> CookiesContext = { NoopCookiesContext },
     printer: Printer = TestPrinter(),
-    responseStorageDir: Path? = null
+    responseStorageDir: Path? = null,
+    configureContext: (ConnektContextImpl) -> Unit = { }
 ): ConnektContext {
-    val lifeCycleCallbacksImpl = ConnektLifeCycleCallbacksImpl()
     val context = createConnektContext(
         storage,
-        environmentStore,
-        cookiesContextFactory(lifeCycleCallbacksImpl),
+        NoopEnvironmentStore,
+        NoopCookiesContext,
         ClientContextImpl(
             ConnektInterceptor(
                 printer,
@@ -28,10 +26,8 @@ fun testConnektContext(
             )
         ),
         printer
-    ).onClose {
-        lifeCycleCallbacksImpl.fireClosed()
-    }
-
+    )
+    configureContext(context)
     return context
 }
 

@@ -1,6 +1,5 @@
 package io.amplicode.connekt
 
-import io.amplicode.connekt.context.ConnektLifeCycleCallbacksImpl
 import io.amplicode.connekt.context.CookiesContextImpl
 import io.amplicode.connekt.dsl.GET
 import io.amplicode.connekt.dsl.POST
@@ -33,18 +32,16 @@ class CookiesTest(server: TestServer) : TestWithServer(server) {
         )
 
         runScript(
-            context = testConnektContext(
-                cookiesContextFactory = {
-                    CookiesContextImpl(storageFile, it)
-                }
-            )
+            context = testConnektContext {
+                it.cookiesContext = CookiesContextImpl(storageFile)
+            }
         ) {
             // Make server to set cookies for our client
             POST("$host/cookies/set") {
                 header("Content-Type", "application/json")
 
                 val body = SetCookieRequest(cookiesToSet)
-                body(Json.Default.encodeToString(body))
+                body(Json.encodeToString(body))
             }.then {
                 assertOk()
             }
@@ -79,16 +76,9 @@ class CookiesTest(server: TestServer) : TestWithServer(server) {
     }
 
     private fun assertStorageFileContainsCookies(storageFile: Path, cookiesToSet: List<Cookie>) {
-        val lifeCycleCallbacks = ConnektLifeCycleCallbacksImpl()
-
-        val cookiesContextThen = CookiesContextImpl(
-            storageFile,
-            lifeCycleCallbacks
-        )
-
+        val cookiesContextThen = CookiesContextImpl(storageFile)
         val cookies = cookiesContextThen.cookieJar
             .loadForRequest("$host/foo".toHttpUrl())
-
         cookiesToSet.forEach { expectedCookie ->
             val actualCookie = cookies.find {
                 it.name == expectedCookie.name
@@ -104,8 +94,6 @@ class CookiesTest(server: TestServer) : TestWithServer(server) {
                 "Different values for cookie: ${expectedCookie.name}"
             )
         }
-
-        lifeCycleCallbacks.fireClosed()
     }
 }
 

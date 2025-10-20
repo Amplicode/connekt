@@ -1,6 +1,5 @@
 package io.amplicode.connekt.execution
 
-import io.amplicode.connekt.ConnektBuilder
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.debugln
 import io.amplicode.connekt.execution.ExecutionMode.COMPILE_ONLY
@@ -46,7 +45,7 @@ class ConnektScript(
             enablePowerAssert
         )
         val result = connektScriptingHost.evalScript(
-            ConnektBuilder(context),
+            context.connektBuilderFactory.createConnektBuilder(),
             sourceCode
         )
         handleErrors(result)

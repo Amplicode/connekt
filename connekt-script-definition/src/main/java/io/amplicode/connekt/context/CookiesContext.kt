@@ -17,19 +17,14 @@ object NoopCookiesContext : CookiesContext {
     override val cookieJar: CookieJar = CookieJar.NO_COOKIES
 }
 
-class CookiesContextImpl(
-    storage: Path,
-    connektLifeCycleCallbacks: ConnektLifeCycleCallbacks
-) : CookiesContext {
+class CookiesContextImpl(storage: Path) : CookiesContext, AutoCloseable {
 
     private val cookieJarImpl = PersistentCookieJar(storage)
 
     override val cookieJar: CookieJar = cookieJarImpl
 
-    init {
-        connektLifeCycleCallbacks.onClose {
-            cookieJarImpl.close()
-        }
+    override fun close() {
+        cookieJarImpl.close()
     }
 }
 
