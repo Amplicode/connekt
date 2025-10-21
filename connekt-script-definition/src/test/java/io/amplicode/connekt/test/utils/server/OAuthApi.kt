@@ -28,33 +28,41 @@ internal fun Routing.oauthApi() {
     post<OAuth.Token> {
         val grantType = call.receiveParameters()["grant_type"] ?: error("grant_type is required")
         val response = when (grantType) {
-            "authorization_code" -> {
-                AccessTokenResponse(
-                    "foo",
-                    Int.MAX_VALUE.toLong(),
-                    "bar",
-                    "baz",
-                    "qux",
-                    Int.MAX_VALUE.toLong(),
-                    Int.MAX_VALUE.toLong()
-                )
-            }
+            "authorization_code" -> AccessTokenResponse(
+                generateToken(),
+                Int.MAX_VALUE.toLong(),
+                generateToken(),
+                "baz",
+                "qux",
+                Int.MAX_VALUE.toLong(),
+                Int.MAX_VALUE.toLong()
+            )
 
-            "refresh_token" -> {
-                RefreshTokenResponse(
-                    "foo",
-                    Int.MAX_VALUE.toLong(),
-                    "baz",
-                    "qux",
-                    Int.MAX_VALUE.toLong(),
-                    Int.MAX_VALUE.toLong()
-                )
-            }
+            "refresh_token" -> RefreshTokenResponse(
+                generateToken(),
+                Int.MAX_VALUE.toLong(),
+                "baz",
+                "qux",
+                Int.MAX_VALUE.toLong(),
+                Int.MAX_VALUE.toLong()
+            )
 
             else -> error("Unsupported grant type: $grantType")
         }
         call.respond(response)
     }
+}
+
+private fun generateToken(
+    prefix: String = "gen-token:",
+    length: Int = 16
+): String {
+    val body = (1..length)
+        .asSequence()
+        .map { ('a'..'z') }
+        .map { it.random() }
+        .joinToString("")
+    return "$prefix:$body"
 }
 
 @Suppress("PropertyName")
@@ -63,6 +71,7 @@ class OAuth {
 
     @Resource("auth")
     class Auth(
+        @Suppress("unused")
         val parent: OAuth = OAuth(),
         val response_type: String? = null,
         val redirect_uri: String? = null,

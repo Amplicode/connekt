@@ -74,13 +74,7 @@ private class AuthValueDelegate(
         thisRef: Any?,
         property: KProperty<*>
     ): Auth {
-        val auth = storeMap.getValue<Auth>(key, prop.returnType)
-        val currentTime = System.currentTimeMillis()
-        return when {
-            auth == null -> runner.authorize()
-            currentTime > auth.refreshTokenExpirationTs -> runner.authorize()
-            currentTime > auth.accessTokenExpirationTs -> runner.refresh(auth)
-            else -> auth
-        }
+        val currAuth = storeMap.getValue<Auth>(key, prop.returnType)
+        return runner.getAuth(currAuth)
     }
 }

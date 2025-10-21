@@ -109,6 +109,16 @@ class OAuthRunner(
 
     fun authorize(): Auth = execute()
 
+    fun getAuth(currAuth: Auth?): Auth {
+        val currentTime = System.currentTimeMillis()
+        return when {
+            currAuth == null -> authorize()
+            currentTime > currAuth.refreshTokenExpirationTs -> authorize()
+            currentTime > currAuth.accessTokenExpirationTs -> refresh(currAuth)
+            else -> currAuth
+        }
+    }
+
     override fun execute(): Auth {
         val authUrl = "$authorizeEndpoint?" +
                 "client_id=$clientId" +
@@ -175,7 +185,7 @@ class OAuthRunner(
     }
 
     private fun callListeners(action: (Listener) -> Unit) =
-        listeners.forEach(action)
+        listeners.asReversed().forEach(action)
 
     private val listeners: MutableList<Listener> = mutableListOf()
 

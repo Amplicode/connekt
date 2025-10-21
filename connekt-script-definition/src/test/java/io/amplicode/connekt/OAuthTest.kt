@@ -1,5 +1,6 @@
 package io.amplicode.connekt
 
+import io.amplicode.connekt.auth.Auth
 import io.amplicode.connekt.auth.OAuthRunner
 import io.amplicode.connekt.context.persistence.InMemoryStorage
 import io.amplicode.connekt.context.persistence.Storage
@@ -16,6 +17,7 @@ import okhttp3.Request
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 
 class OAuthTest(server: TestServer) : TestWithServer(server) {
 
@@ -45,7 +47,6 @@ class OAuthTest(server: TestServer) : TestWithServer(server) {
     @Test
     fun `test synthetic oauth`() {
         val storage = InMemoryStorage()
-        var codeAuthCalls = 0
         val myScript: ConnektBuilder.() -> Unit = {
             val keycloakOAuth by oauth(
                 resourcePath(OAuth.Auth()),
@@ -60,53 +61,90 @@ class OAuthTest(server: TestServer) : TestWithServer(server) {
                 bearerAuth(keycloakOAuth.accessToken)
             }
         }
-        runScript(0, createContext(storage) { codeAuthCalls++ }, myScript)
-        runScript(1, createContext(storage) { codeAuthCalls++ }, myScript)
-        runScript(1, createContext(storage) { codeAuthCalls++ }, myScript)
-        assertEquals(
-            1,
-            codeAuthCalls,
-            "Code auth calls must be called only once"
+        val oauthListener = object : OAuthRunner.Listener {
+            var codeAuthCalls = 0
+            val results = ArrayDeque<Auth>()
+
+            override fun onWaitAuthCode(authUrl: String) {
+                codeAuthCalls++
+            }
+
+            override fun onResult(auth: Auth) {
+                results.addLast(auth)
+            }
+        }
+
+        fun runScript(number: Int) = runScript(
+            number,
+            createContext(storage, oauthListener),
+            myScript
         )
+
+        runScript(0)
+        assertEquals(1, oauthListener.codeAuthCalls)
+        assertEquals(1, oauthListener.results.size)
+        runScript(1)
+        assertEquals(1, oauthListener.codeAuthCalls)
+        assertEquals(1, oauthListener.results.size)
+        runScript(1)
+        assertEquals(1, oauthListener.codeAuthCalls)
+        assertEquals(1, oauthListener.results.size)
+        runScript(0)
+        assertEquals(2, oauthListener.codeAuthCalls)
+        assertEquals(2, oauthListener.results.size)
+        runScript(1)
+        assertEquals(2, oauthListener.codeAuthCalls)
+        assertEquals(2, oauthListener.results.size)
+        oauthListener.results
+            .zipWithNext()
+            .forEach { (a, b) -> assertNotEquals(a, b) }
     }
 
     /**
+     * Creates a context with a custom OAuth runner that makes a code request by itself
+     * instead of delegating it to the user.
+     *
      * @param storage the storage to be used between script runs.
      */
     fun createContext(
         storage: Storage,
-        beforeLinkClick: () -> Unit
+        oauthListener: OAuthRunner.Listener
     ) = testConnektContext(storage = storage) {
-        val originalAuthExtensions = it.authExtensions
-        it.authExtensions = object : AuthExtensions by originalAuthExtensions {
-            override fun oauth(
-                authorizeEndpoint: String,
-                clientId: String,
-                clientSecret: String?,
-                scope: String,
-                tokenEndpoint: String,
-                redirectUri: String
-            ): OAuthRunner {
-                val authRunner = originalAuthExtensions.oauth(
-                    authorizeEndpoint,
-                    clientId,
-                    clientSecret,
-                    scope,
-                    tokenEndpoint,
-                    redirectUri
-                )
-                authRunner.addListener(object : OAuthRunner.Listener {
-                    override fun onWaitAuthCode(authUrl: String) {
-                        beforeLinkClick()
-                        val request = Request.Builder()
-                            .url(authUrl)
-                            .build()
-                        OkHttpClient().newCall(request)
-                            .execute()
-                    }
-                })
-                return authRunner
-            }
+        it.authExtensions = UserlessOAuthExtensions(it.authExtensions, oauthListener)
+    }
+
+    class UserlessOAuthExtensions(
+        private val original: AuthExtensions,
+        private val listener: OAuthRunner.Listener,
+    ) : AuthExtensions by original {
+        override fun oauth(
+            authorizeEndpoint: String,
+            clientId: String,
+            clientSecret: String?,
+            scope: String,
+            tokenEndpoint: String,
+            redirectUri: String
+        ): OAuthRunner {
+            val authRunner = original.oauth(
+                authorizeEndpoint,
+                clientId,
+                clientSecret,
+                scope,
+                tokenEndpoint,
+                redirectUri
+            )
+            // Do auth request as it was the user
+            authRunner.addListener(object : OAuthRunner.Listener {
+                override fun onWaitAuthCode(authUrl: String) {
+                    val request = Request.Builder()
+                        .url(authUrl)
+                        .build()
+                    OkHttpClient().newCall(request)
+                        .execute()
+                }
+            })
+            authRunner.addListener(listener)
+            return authRunner
         }
     }
 }
