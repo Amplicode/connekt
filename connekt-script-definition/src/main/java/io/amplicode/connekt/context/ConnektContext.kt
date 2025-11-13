@@ -19,6 +19,7 @@ interface ConnektContext : AutoCloseable, ComponentProvider {
     val connektBuilderFactory: ConnektBuilderFactory
     val jsonPathExtensionsProvider: JsonPathExtensionsProvider
     val authExtensions: AuthExtensions
+    val storage: Storage
 }
 
 class ConnektContextImpl(
@@ -37,6 +38,7 @@ class ConnektContextImpl(
     override var connektBuilderFactory: ConnektBuilderFactory by registry
     override var jsonPathExtensionsProvider: JsonPathExtensionsProvider by registry
     override var authExtensions: AuthExtensions by registry
+    override var storage: Storage by registry
 
     override fun close() {
         try {
@@ -56,6 +58,7 @@ fun createConnektContext(
 ): ConnektContextImpl {
     val contextImpl = ConnektContextImpl()
     contextImpl.apply {
+        this.storage = storage
         this.environmentStore = environmentStore
         this.variablesStore = VariablesStore(storage)
         this.cookiesContext = cookiesContext

@@ -40,6 +40,7 @@ class OAuthTest(server: TestServer) : TestWithServer(server) {
             }
         }
         runScript(0, testConnektContext(storage), myScript)
+        runScript(0, testConnektContext(storage), myScript)
         runScript(1, testConnektContext(storage), myScript)
         runScript(1, testConnektContext(storage), myScript)
     }
@@ -61,41 +62,74 @@ class OAuthTest(server: TestServer) : TestWithServer(server) {
                 bearerAuth(keycloakOAuth.accessToken)
             }
         }
-        val oauthListener = object : OAuthRunner.Listener {
-            var codeAuthCalls = 0
-            val results = ArrayDeque<Auth>()
 
-            override fun onWaitAuthCode(authUrl: String) {
-                codeAuthCalls++
+        class AuthRunnerActionsCounter {
+            var browserAuthCalls: Int = 0
+            var refreshTokenCalls: Int = 0
+            var authCalls: Int = 0
+
+            fun assert(
+                browserAuthCalls: Int,
+                refreshTokenCalls: Int,
+                authCalls: Int
+            ) {
+                assertEquals(browserAuthCalls, this.browserAuthCalls)
+                assertEquals(refreshTokenCalls, this.refreshTokenCalls)
+                assertEquals(authCalls, this.authCalls)
+            }
+        }
+
+        val listener = object : OAuthRunner.Listener {
+            var counter = AuthRunnerActionsCounter()
+                private set
+
+            val obtainedAuthentications = ArrayDeque<Auth>()
+
+            fun resetCounter() {
+                counter = AuthRunnerActionsCounter()
             }
 
-            override fun onResult(auth: Auth) {
-                results.addLast(auth)
+            override fun onWaitAuthCode(authUrl: String) {
+                counter.browserAuthCalls++
+            }
+
+            override fun onAuthorized(auth: Auth) {
+                counter.authCalls++
+                obtainedAuthentications.addLast(auth)
+            }
+
+            override fun beforeRefreshTokenCall() {
+                counter.refreshTokenCalls++
             }
         }
 
         fun runScript(number: Int) = runScript(
             number,
-            createContext(storage, oauthListener),
+            createContext(storage, listener),
             myScript
         )
 
+        // Call auth. Expect: +1 browser auth, +1 auth
         runScript(0)
-        assertEquals(1, oauthListener.codeAuthCalls)
-        assertEquals(1, oauthListener.results.size)
+        listener.counter.assert(1, 0, 1)
+        listener.resetCounter()
+        // Call request. Expect state unchanged
         runScript(1)
-        assertEquals(1, oauthListener.codeAuthCalls)
-        assertEquals(1, oauthListener.results.size)
+        listener.counter.assert(0, 0, 0)
+        listener.resetCounter()
+        // Call request again. Expect state unchanged
         runScript(1)
-        assertEquals(1, oauthListener.codeAuthCalls)
-        assertEquals(1, oauthListener.results.size)
+        listener.counter.assert(0, 0, 0)
+        listener.resetCounter()
+        // Call auth again. Expect token refresh
         runScript(0)
-        assertEquals(2, oauthListener.codeAuthCalls)
-        assertEquals(2, oauthListener.results.size)
+        listener.counter.assert(0, 1, 0)
+        listener.resetCounter()
+        // Call request again. Expect state unchanged
         runScript(1)
-        assertEquals(2, oauthListener.codeAuthCalls)
-        assertEquals(2, oauthListener.results.size)
-        oauthListener.results
+        listener.counter.assert(0, 0, 0)
+        listener.resetCounter()
+        listener.obtainedAuthentications
             .zipWithNext()
             .forEach { (a, b) -> assertNotEquals(a, b) }
     }

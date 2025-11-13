@@ -59,9 +59,18 @@ class OAuthRunner(
     private val connektContext: ConnektContext
 ) : Executable<Auth>() {
 
+    /**
+     * Stored auth used to get new access tokens.
+     * If provided Auth is `null` then browser authentication will be started.
+     */
+    var storedAuthProvider: () -> Auth? = { null }
+
     private val jsonContext = connektContext.jsonContext
 
-    fun refresh(auth: Auth): Auth {
+    private fun refresh(auth: Auth): Auth {
+        callListeners {
+            it.beforeRefreshTokenCall()
+        }
         val response = connektContext.executionContext
             .getExecutionStrategy(this)
             .executeRequest(
@@ -103,23 +112,13 @@ class OAuthRunner(
             System.currentTimeMillis() + refreshTokenResponse.expires_in * 1000,
             System.currentTimeMillis() + refreshTokenResponse.getRefreshExpiresUnified() * 1000
         )
-        fireOnResult(newAuth)
+        callListeners {
+            it.onTokenRefreshed(newAuth)
+        }
         return newAuth
     }
 
-    fun authorize(): Auth = execute()
-
-    fun getAuth(currAuth: Auth?): Auth {
-        val currentTime = System.currentTimeMillis()
-        return when {
-            currAuth == null -> authorize()
-            currentTime > currAuth.refreshTokenExpirationTs -> authorize()
-            currentTime > currAuth.accessTokenExpirationTs -> refresh(currAuth)
-            else -> currAuth
-        }
-    }
-
-    override fun execute(): Auth {
+    private fun authorize(): Auth {
         val authUrl = "$authorizeEndpoint?" +
                 "client_id=$clientId" +
                 "&response_type=code" +
@@ -135,10 +134,7 @@ class OAuthRunner(
 
         connektContext.printer.println(authUrl)
 
-        val authCode = waitForAuthCode(
-            redirectUri,
-            onStart = { fireWaitingAuthCode(authUrl) }
-        )
+        val authCode = waitForAuthCode(redirectUri, authUrl)
 
         val response = connektContext.executionContext
             .getExecutionStrategy(this)
@@ -172,16 +168,73 @@ class OAuthRunner(
             System.currentTimeMillis() + accessTokenResponse.expires_in * 1000,
             System.currentTimeMillis() + accessTokenResponse.getRefreshExpiresUnified() * 1000
         )
-        fireOnResult(auth)
+        callListeners { it.onAuthorized(auth) }
         return auth
     }
 
-    private fun fireOnResult(auth: Auth) {
-        callListeners { it.onResult(auth) }
+    /**
+     * @param withAccessTokenRefresh if true then access token from stored auth will also be refreshed
+     * even if it is not expired.
+     */
+    fun getAuth(withAccessTokenRefresh: Boolean = false): Auth {
+        val storedAuth = storedAuthProvider()
+        return when {
+            storedAuth == null -> authorize()
+            storedAuth.isRefreshTokenExpired() -> authorize()
+            storedAuth.isAccessTokenExpired() -> refresh(storedAuth)
+            withAccessTokenRefresh -> refresh(storedAuth)
+            else -> storedAuth
+        }
     }
 
-    private fun fireWaitingAuthCode(authUrl: String) {
+    override fun execute(): Auth {
+        // Always refresh the token if the Runner is called directly
+        return getAuth(true)
+    }
+
+    private fun waitForAuthCode(
+        redirectUri: String,
+        authUrl: String
+    ): String {
+        val redirectUrl = URL(redirectUri)
+        val port = redirectUrl.port
+        val path = redirectUrl.path
+
+        val future = CompletableFuture<String>()
+        val server = HttpServer.create(InetSocketAddress(port), 0)
+
+        server.createContext(path) { exchange ->
+            val uri: URI = exchange.requestURI
+            val query = uri.rawQuery ?: ""
+            val params = query.split("&").associate {
+                val (k, v) = it.split("=")
+                k to v
+            }
+
+            val code = params["code"]
+
+            val response = if (code != null) {
+                "Authorization successful! You can close this tab."
+            } else {
+                future.completeExceptionally(IllegalArgumentException("No 'code' in query"))
+                "Missing 'code' parameter"
+            }
+
+            exchange.sendResponseHeaders(200, response.toByteArray().size.toLong())
+            exchange.responseBody.use { it.write(response.toByteArray()) }
+
+            if (code != null) {
+                future.complete(code)
+            }
+        }
+
+        server.start()
+        println("Waiting for authorization ...")
         callListeners { it.onWaitAuthCode(authUrl) }
+
+        val code = future.get()
+        server.stop(0)
+        return code
     }
 
     private fun callListeners(action: (Listener) -> Unit) =
@@ -194,52 +247,17 @@ class OAuthRunner(
     }
 
     interface Listener {
-        fun onResult(auth: Auth) {}
+        fun onAuthorized(auth: Auth) {}
+
+        /**
+         * Executed when authenticator is turned into waiting for authorization code state.
+         */
         fun onWaitAuthCode(authUrl: String) {}
+
+        fun beforeRefreshTokenCall() {}
+        fun onTokenRefreshed(auth: Auth) {}
     }
 }
 
-private fun waitForAuthCode(
-    redirectUri: String,
-    onStart: () -> Unit
-): String {
-    val redirectUrl = URL(redirectUri)
-    val port = redirectUrl.port
-    val path = redirectUrl.path
-
-    val future = CompletableFuture<String>()
-    val server = HttpServer.create(InetSocketAddress(port), 0)
-
-    server.createContext(path) { exchange ->
-        val uri: URI = exchange.requestURI
-        val query = uri.rawQuery ?: ""
-        val params = query.split("&").associate {
-            val (k, v) = it.split("=")
-            k to v
-        }
-
-        val code = params["code"]
-
-        val response = if (code != null) {
-            "Authorization successful! You can close this tab."
-        } else {
-            future.completeExceptionally(IllegalArgumentException("No 'code' in query"))
-            "Missing 'code' parameter"
-        }
-
-        exchange.sendResponseHeaders(200, response.toByteArray().size.toLong())
-        exchange.responseBody.use { it.write(response.toByteArray()) }
-
-        if (code != null) {
-            future.complete(code)
-        }
-    }
-
-    server.start()
-    println("Waiting for authorization ...")
-    onStart()
-
-    val code = future.get() // блокируется, пока не получит код
-    server.stop(0)
-    return code
-}
+private fun Auth.isAccessTokenExpired() = System.currentTimeMillis() >= accessTokenExpirationTs
+private fun Auth.isRefreshTokenExpired() = System.currentTimeMillis() >= refreshTokenExpirationTs

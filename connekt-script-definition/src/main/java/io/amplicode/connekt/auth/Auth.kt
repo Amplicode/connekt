@@ -1,6 +1,6 @@
 package io.amplicode.connekt.auth
 
-class Auth(
+data class Auth(
     val accessToken: String,
     val refreshToken: String,
     val accessTokenExpirationTs: Long,
