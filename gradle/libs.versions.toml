@@ -1,6 +1,6 @@
 [versions]
 
-kotlin = "2.0.21"
+kotlin = "2.2.21"
 serialization = "1.6.2"
 ktor = "3.0.3"
 
