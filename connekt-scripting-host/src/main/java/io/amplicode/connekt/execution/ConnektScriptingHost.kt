@@ -10,6 +10,7 @@ import io.amplicode.connekt.connektVersion
 import io.amplicode.connekt.dsl.ConnektBuilder
 import java.io.File
 import java.io.File.pathSeparator
+import java.security.MessageDigest
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.jvm.BasicJvmScriptEvaluator
@@ -85,22 +86,26 @@ class ConnektScriptingHost(
     }
 
     private fun createCompiledScriptJarsCache() =
-        CompiledScriptJarsCache { sourceCode, _ ->
-            val cacheKeyValues = sequenceOf(
+        CompiledScriptJarsCache { sourceCode, configuration ->
+            val cacheKeys = sequenceOf(
                 connektVersion,
-                sourceCode.text.hashCode(),
-                sourceCode.locationId.hashCode(),
-                jvmTarget.replace('.', '-')
+                sourceCode.text,
+                sourceCode.locationId,
+                jvmTarget,
+                configuration.notTransientData
             )
-            val cacheFileName = cacheKeyValues.joinToString(
-                separator = "_",
-                postfix = ".connekt.cache"
-            )
+            val cacheName = cacheKeys.joinToString().sha256()
             File(
                 System.getProperty("java.io.tmpdir"),
-                cacheFileName
+                "$cacheName.connekt.cache"
             )
         }
+
+    private fun String.sha256(): String {
+        val bytes = MessageDigest.getInstance("SHA-256")
+            .digest(this.toByteArray())
+        return bytes.joinToString("") { "%02x".format(it) }
+    }
 
     private fun MutableList<String>.addAll(vararg values: String) = addAll(values)
 }
