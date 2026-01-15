@@ -65,15 +65,19 @@ private fun createEnvStore(command: AbstractConnektCommand): EnvironmentStore {
 
     val envName = command.envName
     if (envName != null) {
+        val environmentStores = mutableListOf<EnvironmentStore>(overriddenValues)
+
+        val privateEnvFile = command.privateEnvFile ?: defaultPrivateEnvFile(command)
+        if (privateEnvFile?.exists() == true) {
+            environmentStores.add(FileEnvironmentStore(privateEnvFile, envName))
+        }
+
         val envFile = command.envFile ?: defaultEnvFile(command)
         if (envFile?.exists() == true) {
-            return CompoundEnvironmentStore(
-                listOf(
-                    overriddenValues,
-                    FileEnvironmentStore(envFile, envName)
-                )
-            )
+            environmentStores.add(FileEnvironmentStore(envFile, envName))
         }
+
+        return CompoundEnvironmentStore(environmentStores)
     }
 
     return overriddenValues
@@ -83,3 +87,8 @@ private fun defaultEnvFile(command: AbstractConnektCommand) = command
     .script
     ?.parentFile
     ?.resolve("connekt.env.json")
+
+private fun defaultPrivateEnvFile(command: AbstractConnektCommand) = command
+    .script
+    ?.parentFile
+    ?.resolve("connekt.private.env.json")

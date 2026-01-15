@@ -28,6 +28,9 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
     val envFile by option(help = "Environment file")
         .file(mustExist = true, canBeDir = false, mustBeReadable = true)
 
+    val privateEnvFile by option(help = "Private environment file")
+        .file(mustExist = true, canBeDir = false, mustBeReadable = true)
+
     val storageFile by option(help = "Storage file")
         .path(mustExist = false, canBeDir = true, canBeFile = false, mustBeReadable = true)
         .default(connektHome.resolve("storage"))
