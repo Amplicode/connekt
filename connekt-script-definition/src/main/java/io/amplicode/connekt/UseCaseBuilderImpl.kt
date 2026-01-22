@@ -13,7 +13,7 @@ internal class UseCaseBuilderImpl(
     private val context: ConnektContext,
     private val eachRequestExecutionStrategy: RequestExecutionStrategy,
     jsonPathExtensionsProvider: JsonPathExtensionsProvider = JsonExtensionsProviderImpl(context)
-) : UseCaseBuilder,
+) : UseCaseBuilder(),
     JsonPathExtensionsProvider by jsonPathExtensionsProvider {
 
     override operator fun <T> T.provideDelegate(

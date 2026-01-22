@@ -31,10 +31,6 @@ object ConnektConfiguration : ScriptCompilationConfiguration({
         "Connekt"
     )
 
-    implicitReceivers(
-        ConnektBuilder::class
-    )
-
     jvm {
         dependenciesFromCurrentContext(wholeClasspath = true)
     }

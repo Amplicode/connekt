@@ -113,7 +113,7 @@ class DslTest(server: TestServer) : TestWithServer(server) {
                     field("fact", "IntelliJ + HTTP Client = <3")
                 }
             } then {
-                val echoedFormParams = jsonPath().json<Map<String, List<String>>>()
+                val echoedFormParams = decode<Map<String, List<String>>>()
                 assertEquals(
                     mapOf(
                         "id" to listOf("999"),
@@ -177,7 +177,7 @@ class DslTest(server: TestServer) : TestWithServer(server) {
                 queryParam("bar", 2)
                 queryParam("baz", 3)
             }.then {
-                val params = jsonPath().json<Map<String, List<String>>>()
+                val params = decode<Map<String, List<String>>>()
                 assertEquals(
                     mapOf(
                         "foo" to "1",

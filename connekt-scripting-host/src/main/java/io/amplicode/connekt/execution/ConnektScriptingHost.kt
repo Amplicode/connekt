@@ -42,7 +42,7 @@ class ConnektScriptingHost(
                 compilerOptions(buildCompilerOptions())
             },
             ScriptEvaluationConfiguration {
-                implicitReceivers(connektBuilder)
+                constructorArgs(connektBuilder)
             }
         )
     }
