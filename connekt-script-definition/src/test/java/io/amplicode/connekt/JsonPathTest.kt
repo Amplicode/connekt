@@ -32,35 +32,34 @@ class JsonPathTest(server: TestServer) : TestWithServer(server) {
                         """.trimIndent()
                     )
                 } then {
-                    jsonPath().apply {
-                        assertEquals(
-                            "Test User",
-                            readString("name")
-                        )
-                        assertEquals(
-                            1,
-                            readInt("id")
-                        )
-                        assertEquals(
-                            listOf("admin", "user"),
-                            readList("roles", String::class.java)
-                        )
-                        assertEquals(
-                            true,
-                            readBoolean("isActive")
-                        )
+                    assertEquals(
+                        "Test User",
+                        decode("name")
+                    )
+                    assertEquals(
+                        1,
+                        decode("id")
+                    )
+                    assertEquals(
+                        listOf("admin", "user"),
+                        decode("roles")
+                    )
+                    assertEquals(
+                        true,
+                        decode("isActive")
+                    )
 
-                        // Nested object //
+                    // Nested object //
 
-                        assertEquals(
-                            30,
-                            readInt("profile.age")
-                        )
-                        assertEquals(
-                            "New York",
-                            readString("profile.city")
-                        )
-                    }
+                    assertEquals(
+                        30,
+                        decode("profile.age")
+                    )
+                    assertEquals(
+                        "New York",
+                        decode("profile.city")
+                    )
+
                 }
             }
         }
@@ -89,35 +88,33 @@ class JsonPathTest(server: TestServer) : TestWithServer(server) {
                     """.trimIndent()
                 )
             } then {
-                jsonPath().apply {
-                    assertEquals(
-                        "Test User",
-                        readString("name")
-                    )
-                    assertEquals(
-                        1,
-                        readInt("id")
-                    )
-                    assertEquals(
-                        listOf("admin", "user"),
-                        readList("roles", String::class.java)
-                    )
-                    assertEquals(
-                        true,
-                        readBoolean("isActive")
-                    )
+                assertEquals(
+                    "Test User",
+                    decode("name")
+                )
+                assertEquals(
+                    1,
+                    decode("id")
+                )
+                assertEquals(
+                    listOf("admin", "user"),
+                    decode("roles")
+                )
+                assertEquals(
+                    true,
+                    decode("isActive")
+                )
 
-                    // Nested object //
+                // Nested object //
 
-                    assertEquals(
-                        30,
-                        readInt("profile.age")
-                    )
-                    assertEquals(
-                        "New York",
-                        readString("profile.city")
-                    )
-                }
+                assertEquals(
+                    30,
+                    decode("profile.age")
+                )
+                assertEquals(
+                    "New York",
+                    decode("profile.city")
+                )
             }
         }
     }

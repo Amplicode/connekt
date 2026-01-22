@@ -1,5 +1,6 @@
 package io.amplicode.connekt.test.utils
 
+import io.amplicode.connekt.Connekt
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.context.execution.ExecutionScenario
 import io.amplicode.connekt.dsl.ConnektBuilder
@@ -12,7 +13,7 @@ import io.amplicode.connekt.test.utils.components.testConnektContext
 fun runScript(
     requestNumber: Int? = null,
     context: ConnektContext = testConnektContext(),
-    scriptBuilder: ConnektBuilder.() -> Unit = { }
+    scriptBuilder: Connekt.() -> Unit = { }
 ): String {
     return ScriptStatement(context)
         .applyScript(scriptBuilder)
@@ -41,13 +42,15 @@ class ScriptStatement(val context: ConnektContext = testConnektContext()) {
     /**
      * Applies the script provided in [buildScript] without execution
      */
-    fun applyScript(buildScript: ConnektBuilder.() -> Unit): ScriptStatement {
+    fun applyScript(buildScript: Connekt.() -> Unit): ScriptStatement {
         require(!isScriptApplied) {
             "Script is already applied"
         }
-        context.connektBuilderFactory
-            .createConnektBuilder()
-            .buildScript()
+
+        TestConnekt(
+            context.connektBuilderFactory.createConnektBuilder()
+        ).buildScript()
+
         isScriptApplied = true
         return this
     }
@@ -57,3 +60,5 @@ class ScriptStatement(val context: ConnektContext = testConnektContext()) {
         return this
     }
 }
+
+private class TestConnekt(connektBuilder: ConnektBuilder) : Connekt(connektBuilder)
