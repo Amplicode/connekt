@@ -13,7 +13,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 abstract class AbstractConnektCommand : CliktCommand("Connekt") {
-    val script by option(help = "Script file path")
+    open val script by option(help = "Script file path")
         .file(mustExist = true, canBeDir = false, mustBeReadable = true)
 
     val requestNumber by option(
@@ -25,10 +25,10 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
 
     val requestName by option(help = "Name of the request to be executed")
 
-    val envFile by option(help = "Environment file")
+    open val envFile by option(help = "Environment file")
         .file(mustExist = true, canBeDir = false, mustBeReadable = true)
 
-    val privateEnvFile by option(help = "Private environment file")
+    open val privateEnvFile by option(help = "Private environment file")
         .file(mustExist = true, canBeDir = false, mustBeReadable = true)
 
     val storageFile by option(help = "Storage file")
@@ -43,9 +43,9 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
         .path(mustExist = false, canBeDir = true, canBeFile = false, mustBeReadable = true)
         .default(connektHome.resolve("response"))
 
-    val envName by option(help = "Environment name")
+    open val envName by option(help = "Environment name")
 
-    val envParams by option("--env-param")
+    open val envParams by option("--env-param")
         .transformAll { input ->
             input.map {
                 val split = it.split("=", limit = 2)

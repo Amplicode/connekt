@@ -60,7 +60,7 @@ fun createConnektContext(command: AbstractConnektCommand): ConnektContext {
     return context
 }
 
-private fun createEnvStore(command: AbstractConnektCommand): EnvironmentStore {
+internal fun createEnvStore(command: AbstractConnektCommand): EnvironmentStore {
     val overriddenValues = ValuesEnvironmentStore(command.envParams.toMap())
 
     val envName = command.envName
