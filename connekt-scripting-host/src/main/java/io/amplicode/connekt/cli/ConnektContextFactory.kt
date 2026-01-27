@@ -67,15 +67,10 @@ internal fun createEnvStore(command: AbstractConnektCommand): EnvironmentStore {
     if (envName != null) {
         val environmentStores = mutableListOf<EnvironmentStore>(overriddenValues)
 
-        val privateEnvFile = command.privateEnvFile ?: defaultPrivateEnvFile(command)
-        if (privateEnvFile?.exists() == true) {
-            environmentStores.add(FileEnvironmentStore(privateEnvFile, envName))
-        }
-
-        val envFile = command.envFile ?: defaultEnvFile(command)
-        if (envFile?.exists() == true) {
-            environmentStores.add(FileEnvironmentStore(envFile, envName))
-        }
+        listOfNotNull(
+            command.privateEnvFile ?: defaultPrivateEnvFile(command),
+            command.envFile ?: defaultEnvFile(command)
+        ).filter { it.exists() }.forEach { environmentStores.add(FileEnvironmentStore(it, envName)) }
 
         return CompoundEnvironmentStore(environmentStores)
     }
