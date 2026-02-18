@@ -5,7 +5,7 @@ import io.amplicode.connekt.Printer
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.context.execution.Executable
 import io.amplicode.connekt.dsl.RequestBuilder
-import io.amplicode.connekt.dsl.doRead
+import io.amplicode.connekt.dsl.decode
 import io.amplicode.connekt.println
 import java.net.InetSocketAddress
 import java.net.URI
@@ -102,7 +102,7 @@ class OAuthRunner(
 
         val refreshTokenResponse = jsonContext
             .getReadContext(response)
-            .doRead<RefreshTokenResponse>("$")
+            .decode<RefreshTokenResponse>("$")
 
         println(refreshTokenResponse)
 
@@ -160,7 +160,7 @@ class OAuthRunner(
         require(response.code == 200) {
             "Failed to get access token: $response"
         }
-        val accessTokenResponse = jsonContext.getReadContext(response).doRead<AccessTokenResponse>("$")
+        val accessTokenResponse = jsonContext.getReadContext(response).decode<AccessTokenResponse>("$")
 
         val auth = Auth(
             accessTokenResponse.access_token,
