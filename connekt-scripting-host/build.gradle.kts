@@ -6,6 +6,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     kotlin("jvm")
+    kotlin("plugin.serialization")
     application
     distribution
     `maven-publish`
@@ -22,6 +23,12 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-scripting-jvm-host")
     implementation("org.jetbrains.kotlin:kotlin-power-assert-compiler-plugin-embeddable")
     implementation("com.github.ajalt.clikt:clikt:5.0.1")
+
+    // JSON library for daemon protocol codec
+    implementation(libs.kotlinx.serialization.json)
+
+    // Coroutines for daemon message loop concurrency
+    implementation(libs.kotlinx.coroutines.core)
 
     // Implementation for slf4j to disable warning
     implementation("org.slf4j:slf4j-nop:2.0.7")
