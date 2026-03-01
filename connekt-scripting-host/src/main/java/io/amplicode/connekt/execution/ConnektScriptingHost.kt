@@ -14,11 +14,14 @@ import java.security.MessageDigest
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.jvm.BasicJvmScriptEvaluator
+import kotlin.script.experimental.jvm.CompiledJvmScriptsCache
 import kotlin.script.experimental.jvm.compilationCache
+import kotlin.script.experimental.jvm.impl.KJvmCompiledScript
 import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
-import kotlin.script.experimental.jvmhost.CompiledScriptJarsCache
 import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromTemplate
+import kotlin.script.experimental.jvmhost.loadScriptFromJar
+import kotlin.script.experimental.jvmhost.saveToJar
 
 class ConnektScriptingHost(
     private val useCompilationCache: Boolean,
@@ -86,20 +89,80 @@ class ConnektScriptingHost(
     }
 
     private fun createCompiledScriptJarsCache() =
-        CompiledScriptJarsCache { sourceCode, configuration ->
-            val cacheKeys = sequenceOf(
-                connektVersion,
-                sourceCode.text,
-                sourceCode.locationId,
-                jvmTarget,
-                configuration.notTransientData
-            )
-            val cacheName = cacheKeys.joinToString().sha256()
-            File(
-                System.getProperty("java.io.tmpdir"),
-                "$cacheName.connekt.cache"
-            )
+        object : CompiledJvmScriptsCache {
+            override fun get(
+                script: SourceCode,
+                scriptCompilationConfiguration: ScriptCompilationConfiguration
+            ): CompiledScript? {
+                val cacheFile = scriptToFile(script, scriptCompilationConfiguration)
+                if (!cacheFile.exists()) return null
+
+                if (!isCacheValid(cacheFile)) {
+                    cacheFile.delete()
+                    metaFile(cacheFile).delete()
+                    return null
+                }
+
+                return cacheFile.loadScriptFromJar() ?: run {
+                    cacheFile.delete()
+                    null
+                }
+            }
+
+            override fun store(
+                compiledScript: CompiledScript,
+                script: SourceCode,
+                scriptCompilationConfiguration: ScriptCompilationConfiguration
+            ) {
+                val cacheFile = scriptToFile(script, scriptCompilationConfiguration)
+
+                val jvmScript = compiledScript as? KJvmCompiledScript
+                    ?: throw IllegalArgumentException("Unsupported script type ${compiledScript::class.java.name}")
+
+                jvmScript.saveToJar(cacheFile)
+
+                // Store imported scripts' timestamps so get() can detect changes later
+                val importedFiles = collectAllOtherScripts(compiledScript)
+                    .mapNotNull { it.sourceLocationId?.let(::File) }
+                metaFile(cacheFile).writeText(
+                    importedFiles.joinToString("\n") { "${it.path}|${it.lastModified()}" }
+                )
+            }
+
+            private fun isCacheValid(cacheFile: File): Boolean {
+                return metaFile(cacheFile).readLines()
+                    .filter { it.isNotBlank() }
+                    .all { line ->
+                        val (path, timestamp) = line.split("|", limit = 2)
+                        File(path).lastModified().toString() == timestamp
+                    }
+            }
+
+            private fun metaFile(cacheFile: File) =
+                cacheFile.resolveSibling("${cacheFile.nameWithoutExtension}.connekt.meta")
+
+            private fun scriptToFile(
+                script: SourceCode,
+                scriptCompilationConfiguration: ScriptCompilationConfiguration
+            ): File {
+                val cacheName = sequenceOf(
+                    connektVersion,
+                    script.text,
+                    script.locationId,
+                    jvmTarget,
+                    scriptCompilationConfiguration.notTransientData,
+                ).joinToString().sha256()
+                return File(System.getProperty("java.io.tmpdir"), "$cacheName.connekt.cache")
+            }
         }
+
+    private fun collectAllOtherScripts(
+        script: CompiledScript,
+        visited: MutableSet<String> = mutableSetOf()
+    ): List<CompiledScript> =
+        script.otherScripts
+            .filter { visited.add(it.sourceLocationId ?: return@filter false) }
+            .flatMap { listOf(it) + collectAllOtherScripts(it, visited) }
 
     private fun String.sha256(): String {
         val bytes = MessageDigest.getInstance("SHA-256")
