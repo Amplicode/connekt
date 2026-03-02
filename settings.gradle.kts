@@ -4,6 +4,7 @@ plugins {
 rootProject.name = "connekt"
 include("connekt-script-definition")
 include("connekt-scripting-host")
+include("connekt-integration-tests")
 
 dependencyResolutionManagement {
     repositories {

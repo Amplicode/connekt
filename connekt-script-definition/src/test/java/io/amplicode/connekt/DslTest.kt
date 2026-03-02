@@ -36,7 +36,7 @@ class DslTest(server: TestServer) : TestWithServer(server) {
         envStore["two"] = "2"
 
         runScript(
-            context = testConnektContext { it.environmentStore = envStore }
+            context = testConnektContext(environmentStore = envStore)
         ) {
             val one: Int by env
             val two: String by env

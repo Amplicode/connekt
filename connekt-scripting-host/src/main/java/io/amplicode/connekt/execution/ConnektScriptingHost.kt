@@ -7,13 +7,12 @@ package io.amplicode.connekt.execution
 
 import io.amplicode.connekt.Connekt
 import io.amplicode.connekt.connektVersion
-import io.amplicode.connekt.dsl.ConnektBuilder
+import io.amplicode.connekt.context.ConnektContext
 import java.io.File
 import java.io.File.pathSeparator
 import java.security.MessageDigest
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.ScriptingHostConfiguration
-import kotlin.script.experimental.jvm.BasicJvmScriptEvaluator
 import kotlin.script.experimental.jvm.CompiledJvmScriptsCache
 import kotlin.script.experimental.jvm.compilationCache
 import kotlin.script.experimental.jvm.impl.KJvmCompiledScript
@@ -25,7 +24,6 @@ import kotlin.script.experimental.jvmhost.saveToJar
 
 class ConnektScriptingHost(
     private val useCompilationCache: Boolean,
-    private val compileOnly: Boolean,
     private val enablePowerAssert: Boolean,
     /**
      * A jvm target version used for script compilation.
@@ -34,18 +32,45 @@ class ConnektScriptingHost(
      */
     private val jvmTarget: String = "1.8"
 ) {
+    fun compileScript(
+        scriptSourceCode: SourceCode
+    ): ResultWithDiagnostics<CompiledScript> {
+        val scriptingHost = createScriptingHost()
+        return scriptingHost.runInCoroutineContext {
+            scriptingHost.compiler(
+                scriptSourceCode,
+                createJvmCompilationConfigurationFromTemplate<Connekt> {
+                    compilerOptions(buildCompilerOptions())
+                }
+            )
+        }
+    }
+
     fun evalScript(
-        connektBuilder: ConnektBuilder,
+        context: ConnektContext,
         scriptSourceCode: SourceCode
     ): ResultWithDiagnostics<EvaluationResult> {
         val scriptingHost = createScriptingHost()
+
         return scriptingHost.eval(
             scriptSourceCode,
             createJvmCompilationConfigurationFromTemplate<Connekt> {
                 compilerOptions(buildCompilerOptions())
             },
             ScriptEvaluationConfiguration {
-                constructorArgs(connektBuilder)
+                refineConfigurationBeforeEvaluate { refinementContext ->
+                    val isRootScript = scriptSourceCode.locationId == refinementContext.compiledScript.sourceLocationId
+
+                    refinementContext.evaluationConfiguration.with {
+                        constructorArgs(
+                            if (isRootScript) {
+                                context.connektBuilderFactory.createConnektBuilder()
+                            } else {
+                                context.connektBuilderFactory.createForImportedScript()
+                            }
+                        )
+                    }.asSuccess()
+                }
             }
         )
     }
@@ -76,15 +101,8 @@ class ConnektScriptingHost(
             null
         }
 
-        val evaluator = if (compileOnly) {
-            NoopScriptEvaluator()
-        } else {
-            BasicJvmScriptEvaluator()
-        }
-
         return BasicJvmScriptingHost(
             baseHostConfiguration = hostConfiguration,
-            evaluator = evaluator,
         )
     }
 
@@ -175,23 +193,6 @@ class ConnektScriptingHost(
 
 val ResultWithDiagnostics<EvaluationResult>.returnValueAsError
     get() = valueOrNull()?.returnValue as? ResultValue.Error
-
-private class NoopScriptEvaluator(
-    private val evaluationConfiguration: ScriptEvaluationConfiguration? = null
-) : ScriptEvaluator {
-
-    override suspend fun invoke(
-        compiledScript: CompiledScript,
-        scriptEvaluationConfiguration: ScriptEvaluationConfiguration
-    ): ResultWithDiagnostics<EvaluationResult> {
-        return ResultWithDiagnostics.Success(
-            EvaluationResult(
-                ResultValue.NotEvaluated,
-                evaluationConfiguration
-            )
-        )
-    }
-}
 
 private fun findPowerAssertJarInClasspath(): File = System.getProperty("java.class.path")
     .split(pathSeparator)

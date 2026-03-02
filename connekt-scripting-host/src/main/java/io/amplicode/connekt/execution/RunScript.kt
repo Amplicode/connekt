@@ -4,7 +4,9 @@ import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.debugln
 import io.amplicode.connekt.execution.ExecutionMode.COMPILE_ONLY
 import io.amplicode.connekt.println
+import kotlin.script.experimental.api.CompiledScript
 import kotlin.script.experimental.api.EvaluationResult
+import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.ScriptDiagnostic
 import kotlin.script.experimental.api.SourceCode
@@ -38,34 +40,39 @@ class ConnektScript(
             executionMode,
             enablePowerAssert
         ) = options
+
         if (debugLog) printOptions(options)
         val connektScriptingHost = ConnektScriptingHost(
             compilationCache,
-            executionMode == COMPILE_ONLY,
             enablePowerAssert
         )
-        val result = connektScriptingHost.evalScript(
-            context.connektBuilderFactory.createConnektBuilder(),
-            sourceCode
-        )
-        handleErrors(result)
-        when (executionMode) {
-            COMPILE_ONLY -> {
-                context.printer.println("The script was compiled without evaluation")
-            }
 
+        return when (executionMode) {
             ExecutionMode.DEFAULT,
             ExecutionMode.CURL -> {
+                val result = connektScriptingHost.evalScript(context, sourceCode)
+                handleErrors(result)
+
                 context.executionContext.execute(executionScenario)
+
+                result
+            }
+
+            COMPILE_ONLY -> {
+                val compileResult = connektScriptingHost.compileScript(sourceCode)
+                handleErrors(compileResult)
+                compileResult.toEvaluationResult()
             }
         }
-        return result
     }
 
-    private fun handleErrors(result: ResultWithDiagnostics<EvaluationResult>) {
-        result.returnValueAsError
-            ?.error
-            ?.printStackTrace()
+    private fun handleErrors(result: ResultWithDiagnostics<*>) {
+        if (result is ResultWithDiagnostics.Success<*>) {
+            (result.value as? EvaluationResult)
+                ?.let { it.returnValue as? ResultValue.Error }
+                ?.error
+                ?.printStackTrace()
+        }
         result.reports.forEach { diagnostic ->
             if (diagnostic.severity > ScriptDiagnostic.Severity.DEBUG) {
                 val message = diagnostic.render()
@@ -107,3 +114,12 @@ class ConnektScript(
         )
     }
 }
+
+private fun ResultWithDiagnostics<CompiledScript>.toEvaluationResult(): ResultWithDiagnostics<EvaluationResult> =
+    when (this) {
+        is ResultWithDiagnostics.Success -> ResultWithDiagnostics.Success(
+            EvaluationResult(ResultValue.NotEvaluated, null),
+            reports
+        )
+        is ResultWithDiagnostics.Failure -> ResultWithDiagnostics.Failure(reports)
+    }

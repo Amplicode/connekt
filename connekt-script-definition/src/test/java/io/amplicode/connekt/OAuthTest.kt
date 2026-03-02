@@ -143,9 +143,14 @@ class OAuthTest(server: TestServer) : TestWithServer(server) {
     fun createContext(
         storage: Storage,
         oauthListener: OAuthRunner.Listener
-    ) = testConnektContext(storage = storage) {
-        it.authExtensions = UserlessOAuthExtensions(it.authExtensions, oauthListener)
-    }
+    ) = testConnektContext(
+        storage = storage,
+        configure = {
+            register(io.amplicode.connekt.dsl.AuthExtensions::class) {
+                UserlessOAuthExtensions(io.amplicode.connekt.ConnektAuthExtensionsImpl(this), oauthListener)
+            }
+        },
+    )
 
     class UserlessOAuthExtensions(
         private val original: AuthExtensions,

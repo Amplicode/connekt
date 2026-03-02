@@ -7,45 +7,56 @@ import io.amplicode.connekt.context.execution.ExecutionContext
 import io.amplicode.connekt.context.persistence.Storage
 import io.amplicode.connekt.dsl.AuthExtensions
 import io.amplicode.connekt.dsl.JsonPathExtensionsProvider
+import kotlin.reflect.KClass
 
-interface ConnektContext : AutoCloseable, ComponentProvider {
-    val environmentStore: EnvironmentStore
-    val variablesStore: VariablesStore
-    val cookiesContext: CookiesContext
-    val clientContext: ClientContext
-    val printer: Printer
-    val jsonContext: JsonContext
-    val executionContext: ExecutionContext
-    val connektBuilderFactory: ConnektBuilderFactory
-    val jsonPathExtensionsProvider: JsonPathExtensionsProvider
-    val authExtensions: AuthExtensions
-    val storage: Storage
-}
+class ConnektContext(private val parent: ConnektContext? = null) : AutoCloseable {
 
-class ConnektContextImpl(
-    private val registry: ComponentRegistry = ComponentsRegistryImpl()
-) : ConnektContext,
-    AutoCloseable,
-    ComponentRegistry by registry {
+    private val registry = LinkedHashMap<KClass<*>, Lazy<Any>>()
 
-    override var environmentStore: EnvironmentStore by registry
-    override var variablesStore: VariablesStore by registry
-    override var cookiesContext: CookiesContext by registry
-    override var clientContext: ClientContext by registry
-    override var printer: Printer by registry
-    override var jsonContext: JsonContext by registry
-    override var executionContext: ExecutionContext by registry
-    override var connektBuilderFactory: ConnektBuilderFactory by registry
-    override var jsonPathExtensionsProvider: JsonPathExtensionsProvider by registry
-    override var authExtensions: AuthExtensions by registry
-    override var storage: Storage by registry
+    fun <T : Any> register(type: KClass<T>, factory: ConnektContext.() -> T) {
+        registry[type] = lazy { this.factory() }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Any> get(type: KClass<T>): T {
+        val value = registry[type]?.value
+        if (value != null) return value as T
+        return parent?.get(type) ?: error("No provider registered for ${type.simpleName}")
+    }
+
+    /**
+     * Creates a child context that delegates to this context for any service not explicitly
+     * registered in the child. Useful for isolated execution scopes (e.g. imported scripts)
+     * that need a fresh [ExecutionContext] but share everything else.
+     */
+    fun fork(configure: ConnektContext.() -> Unit = {}): ConnektContext =
+        ConnektContext(parent = this).apply(configure)
+
+    // ----- Typed convenience accessors -----
+
+    val environmentStore get() = get(EnvironmentStore::class)
+    val variablesStore get() = get(VariablesStore::class)
+    val cookiesContext get() = get(CookiesContext::class)
+    val clientContext get() = get(ClientContext::class)
+    val printer get() = get(Printer::class)
+    val jsonContext get() = get(JsonContext::class)
+    val executionContext get() = get(ExecutionContext::class)
+    val connektBuilderFactory get() = get(ConnektBuilderFactory::class)
+    val jsonPathExtensionsProvider get() = get(JsonPathExtensionsProvider::class)
+    val authExtensions get() = get(AuthExtensions::class)
+    val storage get() = get(Storage::class)
 
     override fun close() {
-        try {
-            registry.close()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        registry.values
+            .filter { it.isInitialized() }
+            .mapNotNull { it.value as? AutoCloseable }
+            .forEach { component ->
+                try {
+                    component.close()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
     }
 }
 
@@ -55,20 +66,17 @@ fun createConnektContext(
     cookiesContext: CookiesContext,
     clientContext: ClientContext,
     printer: Printer,
-): ConnektContextImpl {
-    val contextImpl = ConnektContextImpl()
-    contextImpl.apply {
-        this.storage = storage
-        this.environmentStore = environmentStore
-        this.variablesStore = VariablesStore(storage)
-        this.cookiesContext = cookiesContext
-        this.clientContext = clientContext
-        this.printer = printer
-        jsonContext = JsonContext()
-        executionContext = ExecutionContext()
-        connektBuilderFactory = ConnektBuilderFactoryImpl(contextImpl)
-        jsonPathExtensionsProvider = JsonExtensionsProviderImpl(contextImpl)
-        authExtensions = ConnektAuthExtensionsImpl(contextImpl)
-    }
-    return contextImpl
+    builderFactory: (ConnektContext) -> ConnektBuilderFactory = ::ConnektBuilderFactoryImpl,
+): ConnektContext = ConnektContext().apply {
+    register(Storage::class) { storage }
+    register(EnvironmentStore::class) { environmentStore }
+    register(VariablesStore::class) { VariablesStore(storage) }
+    register(CookiesContext::class) { cookiesContext }
+    register(ClientContext::class) { clientContext }
+    register(Printer::class) { printer }
+    register(JsonContext::class) { JsonContext() }
+    register(ExecutionContext::class) { ExecutionContext() }
+    register(ConnektBuilderFactory::class) { builderFactory(this) }
+    register(JsonPathExtensionsProvider::class) { JsonExtensionsProviderImpl(this) }
+    register(AuthExtensions::class) { ConnektAuthExtensionsImpl(this) }
 }
