@@ -13,23 +13,16 @@ fun testConnektContext(
     storage: Storage = InMemoryStorage(),
     printer: Printer = TestPrinter(),
     responseStorageDir: Path? = null,
-    configureContext: (ConnektContextImpl) -> Unit = { }
-): ConnektContext {
-    val context = createConnektContext(
-        storage,
-        NoopEnvironmentStore,
-        NoopCookiesContext,
-        ClientContextImpl(
-            ConnektInterceptor(
-                printer,
-                responseStorageDir
-            )
-        ),
-        printer
-    )
-    configureContext(context)
-    return context
-}
+    environmentStore: EnvironmentStore = NoopEnvironmentStore,
+    cookiesContext: CookiesContext = NoopCookiesContext,
+    configure: ConnektContext.() -> Unit = {},
+): ConnektContext = createConnektContext(
+    storage,
+    environmentStore,
+    cookiesContext,
+    ClientContextImpl(ConnektInterceptor(printer, responseStorageDir)),
+    printer,
+).apply(configure)
 
 class TestPrinter : Printer {
     val stringPrinter = StringBuilderPrinter()

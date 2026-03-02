@@ -47,3 +47,8 @@ annotation class Header
  */
 @Target(AnnotationTarget.VALUE_PARAMETER)
 annotation class Body
+
+@Target(AnnotationTarget.FILE)
+@Repeatable
+@Retention(AnnotationRetention.SOURCE)
+annotation class Import(vararg val paths: String)

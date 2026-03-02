@@ -13,6 +13,10 @@ class JsonExtensionsProviderImpl(private val context: ConnektContext) : JsonPath
         return context.jsonContext.getReadContext(this)
     }
 
+    @Deprecated(
+        "Use decode() instead.",
+        replaceWith = ReplaceWith("decode<List<T>>(path)", "io.amplicode.connekt.Connekt")
+    )
     override fun <T> ReadContext.readList(path: String, clazz: Class<T>): List<T> {
         val nodes: List<JsonNode> = read(path, object : TypeRef<List<JsonNode>>() {})
         return nodes.map {

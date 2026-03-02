@@ -32,9 +32,7 @@ class CookiesTest(server: TestServer) : TestWithServer(server) {
         )
 
         runScript(
-            context = testConnektContext {
-                it.cookiesContext = CookiesContextImpl(storageFile)
-            }
+            context = testConnektContext(cookiesContext = CookiesContextImpl(storageFile))
         ) {
             // Make server to set cookies for our client
             POST("$host/cookies/set") {

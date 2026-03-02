@@ -8,9 +8,11 @@ package io.amplicode.connekt
 import io.amplicode.connekt.dsl.ConnektBuilder
 import kotlinx.coroutines.runBlocking
 import kotlin.random.Random
+import java.io.File
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.dependencies.*
 import kotlin.script.experimental.dependencies.maven.MavenDependenciesResolver
+import kotlin.script.experimental.host.FileScriptSource
 import kotlin.script.experimental.jvm.JvmDependency
 import kotlin.script.experimental.jvm.dependenciesFromCurrentContext
 import kotlin.script.experimental.jvm.jvm
@@ -24,7 +26,8 @@ object ConnektConfiguration : ScriptCompilationConfiguration({
         "kotlin.script.experimental.dependencies.DependsOn",
         "kotlin.random.Random",
         "org.apache.http.HttpHeaders",
-        "io.amplicode.connekt.dsl.*"
+        "io.amplicode.connekt.dsl.*",
+        "io.amplicode.connekt.Import"
     )
 
     displayName(
@@ -45,6 +48,7 @@ object ConnektConfiguration : ScriptCompilationConfiguration({
             Repository::class,
             handler = ::configureMavenDepsOnAnnotations
         )
+        onAnnotations(Import::class, handler = ::configureImportsOnAnnotation)
     }
 }) {
     @Suppress("unused")
@@ -68,6 +72,35 @@ fun configureMavenDepsOnAnnotations(context: ScriptConfigurationRefinementContex
     }.onSuccess {
         context.compilationConfiguration.with {
             dependencies.append(JvmDependency(it))
+        }.asSuccess()
+    }
+}
+
+fun configureImportsOnAnnotation(
+    context: ScriptConfigurationRefinementContext
+): ResultWithDiagnostics<ScriptCompilationConfiguration> {
+    val annotations = context.collectedData
+        ?.get(ScriptCollectedData.collectedAnnotations)
+        ?.map { it.annotation }
+        ?.filterIsInstance<Import>()
+        ?: return context.compilationConfiguration.asSuccess()
+
+    val scriptBaseDir = (context.script as? FileScriptSource)?.file?.parentFile
+        ?: context.script.locationId?.let { File(it) }?.let { if (it.isFile) it.parentFile else it }
+
+    val importedSources = annotations.flatMap { importAnnotation ->
+        importAnnotation.paths.map { path ->
+            val file = if (File(path).isAbsolute) File(path)
+            else scriptBaseDir?.resolve(path) ?: File(path)
+            FileScriptSource(file)
+        }
+    }
+
+    return if (importedSources.isEmpty()) {
+        context.compilationConfiguration.asSuccess()
+    } else {
+        ScriptCompilationConfiguration(context.compilationConfiguration) {
+            importScripts.append(importedSources)
         }.asSuccess()
     }
 }
