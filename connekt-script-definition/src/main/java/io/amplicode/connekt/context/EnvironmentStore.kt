@@ -19,6 +19,9 @@ interface EnvironmentStore {
     operator fun contains(property: KProperty<*>): Boolean
 }
 
+/**
+ * First store has priority for receive value
+ */
 class CompoundEnvironmentStore(
     private val stores: List<EnvironmentStore>
 ) : EnvironmentStore {
