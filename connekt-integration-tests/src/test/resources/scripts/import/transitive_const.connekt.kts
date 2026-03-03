@@ -1,0 +1,1 @@
+val urlSuffix = "foo"

@@ -46,6 +46,21 @@ class ImportIntegrationTest : IntegrationTest() {
     }
 
     // -------------------------------------------------------------------------
+    // Transitive property access: root script uses a value defined in level 3
+    // directly (not via a function from level 2)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `nested import - property from level 3 is directly accessible in level 1`() {
+        // transitive_root → transitive_helper → transitive_const
+        // transitive_root uses urlSuffix (from transitive_const) directly, not through a function
+        val (_, files) = prepareDir("transitive_const.connekt.kts", "transitive_helper.connekt.kts", "transitive_root.connekt.kts")
+
+        val context = createIntegrationContext(ValuesEnvironmentStore(mapOf("host" to host)))
+        runScriptFile(files["transitive_root.connekt.kts"]!!, context).assertSuccess()
+    }
+
+    // -------------------------------------------------------------------------
     // Two imports in one file
     // -------------------------------------------------------------------------
 
