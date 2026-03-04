@@ -57,25 +57,23 @@ POST("https://api.example.com/users") {
 ### Handling Responses
 
 ```kotlin
-GET("https://api.example.com/users/1").then {
-    val userData = jsonPath().json<Map<String, Any>>()
-    assertEquals("John Doe", userData["name"])
+GET("https://api.example.com/users/1") then {
+    val name = decode<String>("$.name")
+    assertEquals("John Doe", name)
 }
 ```
 
 ### Using Variables
 
 ```kotlin
-val userId by variable<String>()
-
-POST("https://api.example.com/users") {
+val userId: String by POST("https://api.example.com/users") {
     contentType("application/json")
     body("""{"name": "John Doe"}""")
-}.then {
-    userId.set(jsonPath().read("$.id"))
+} then {
+    jsonPath().read("$.id")
 }
 
-GET("https://api.example.com/users/${userId.get()}")
+GET("https://api.example.com/users/$userId")
 ```
 
 ### Form Data
