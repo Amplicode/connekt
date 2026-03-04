@@ -48,7 +48,6 @@ class ConnektContext(private val parent: ConnektContext? = null) : AutoCloseable
 
     override fun close() {
         registry.values
-            .filter { it.isInitialized() }
             .mapNotNull { it.value as? AutoCloseable }
             .forEach { component ->
                 try {
