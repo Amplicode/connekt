@@ -26,20 +26,46 @@ POST("https://api.example.com/users") {
 
 // Handling Responses
 GET("https://api.example.com/users/1") then {
-  val userData = jsonPath().json<Map<String, Any>>()
-  assertEquals("John Doe", userData["name"])
+  val name = decode<String>("$.name")
+  assertEquals("John Doe", name)
 }
 
 // Store value into variable
 val userId: String by POST("https://api.example.com/users") {
   contentType("application/json")
   body("""{"name": "John Doe"}""")
-}.then {
-  userId.set(jsonPath().read("$.id"))
+} then {
+  jsonPath().read("$.id")
 }
 
 // Use value from another request using variable
 GET("https://api.example.com/users/$userId")
+
+// Environment variables (from connekt.env.json)
+val baseUrl: String by env
+
+GET("$baseUrl/users")
+
+// Path parameters
+GET("https://api.example.com/users/{id}/posts/{postId}") {
+  pathParam("id", "user-123")
+  pathParam("postId", 42)
+}
+
+// Authentication helpers
+GET("https://api.example.com/profile") {
+  basicAuth("username", "password")
+}
+
+GET("https://api.example.com/profile") {
+  bearerAuth("my-access-token")
+}
+
+// Use cases — group related requests
+val petNames by useCase("Load pet names") {
+  val response by GET("$baseUrl/pets")
+  response.decode<List<String>>("$.name")
+}
 ```
 
 For more examples and detailed documentation, see

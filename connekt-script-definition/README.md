@@ -102,6 +102,144 @@ POST("https://api.example.com/upload") {
 }
 ```
 
+### Path Parameters
+
+Supply values for `{placeholder}` segments in the URL:
+
+```kotlin
+GET("https://api.example.com/users/{id}/posts/{postId}") {
+    pathParam("id", "user-123")
+    pathParam("postId", 42)
+}
+```
+
+### Authentication Helpers
+
+`basicAuth` sets `Authorization: Basic ...`, `bearerAuth` sets `Authorization: Bearer ...`:
+
+```kotlin
+GET("https://api.example.com/profile") {
+    basicAuth("username", "password")
+}
+
+GET("https://api.example.com/profile") {
+    bearerAuth("my-access-token")
+}
+```
+
+### SSL/TLS Configuration
+
+Use `configureClient` to customize SSL behavior for all requests in the script:
+
+```kotlin
+// WARNING: disables all SSL verification — for local development only
+configureClient {
+    insecure()
+}
+
+// Trust a self-signed certificate from a PEM file
+configureClient {
+    addX509Certificate(File("ca.crt"))
+}
+
+// Trust certificates from a JKS or PKCS12 keystore
+configureClient {
+    addKeyStore(File("keystore.jks"), "password")
+}
+```
+
+`configureClient` can also be called inside a single request block to limit the scope to that request:
+
+```kotlin
+GET("https://internal.example.com/api") {
+    configureClient {
+        addX509Certificate(File("ca.crt"))
+    }
+}
+```
+
+### OAuth2 Authorization Code Flow (Experimental)
+
+Initiate the Authorization Code flow with `oauth` and use the resulting `Auth` object:
+
+```kotlin
+val auth by oauth(
+    authorizeEndpoint = "https://auth.example.com/oauth/authorize",
+    clientId = "my-client",
+    clientSecret = "secret",
+    scope = "openid profile",
+    tokenEndpoint = "https://auth.example.com/oauth/token",
+    redirectUri = "http://localhost:8085/callback"
+)
+
+GET("https://api.example.com/resource") {
+    bearerAuth(auth.accessToken)
+}
+```
+
+For Keycloak, use the `KeycloakOAuthParameters` shortcut:
+
+```kotlin
+val auth by oauth(
+    KeycloakOAuthParameters(
+        serverBaseUrl = "https://keycloak.example.com",
+        realm = "my-realm",
+        protocol = "openid-connect",
+        clientId = "my-client",
+        clientSecret = null,
+        scope = "openid profile",
+        callbackPort = 8085,
+        callbackPath = "/callback"
+    )
+)
+
+GET("https://api.example.com/resource") {
+    bearerAuth(auth.accessToken)
+}
+```
+
+### Cookies
+
+Cookies are automatically sent from the session's cookie jar. Use `noCookies()` to opt out for a specific request:
+
+```kotlin
+GET("https://api.example.com/resource") {
+    noCookies()
+}
+```
+
+### Redirect Handling
+
+By default, redirects are followed automatically. Call `noRedirect()` to receive the `3xx` response directly and inspect the `Location` header:
+
+```kotlin
+GET("https://api.example.com/old-url") {
+    noRedirect()
+}.then {
+    println(header("Location"))
+}
+```
+
+### Environment Variables
+
+Bind values from the Connekt environment configuration (e.g. `connekt.env.json`) using property delegation. The property name is used as the lookup key:
+
+```kotlin
+val baseUrl: String by env
+val port: Int by env
+```
+
+### Use Cases
+
+Group related requests into a named use case. The return value of the block is captured and bound to the variable:
+
+```kotlin
+val petNames by useCase("Load pet names") {
+    val response by GET("$baseUrl/pets")
+    response.decode<List<String>>("$.name")
+}
+```
+
 ## Dependencies
 
 The library depends on:
