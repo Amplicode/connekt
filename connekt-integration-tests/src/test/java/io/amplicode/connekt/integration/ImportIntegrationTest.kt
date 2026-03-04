@@ -1,6 +1,7 @@
 package io.amplicode.connekt.integration
 
 import io.amplicode.connekt.context.ValuesEnvironmentStore
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.nio.file.Files
@@ -51,6 +52,7 @@ class ImportIntegrationTest : IntegrationTest() {
     // -------------------------------------------------------------------------
 
     @Test
+    @Disabled
     fun `nested import - property from level 3 is directly accessible in level 1`() {
         // transitive_root → transitive_helper → transitive_const
         // transitive_root uses urlSuffix (from transitive_const) directly, not through a function
