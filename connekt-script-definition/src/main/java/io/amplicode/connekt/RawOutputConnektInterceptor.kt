@@ -45,8 +45,10 @@ class RawOutputConnektInterceptor(
     }
 
     private fun logRequestBody(request: Request) {
-        val body = handleRequestBody(request)
+        val body = prepareRequestBody(request)
+
         if (body.content == null && body.filePath == null) return
+
         if (body.filePath != null) {
             printer.println("Request body saved.", GREEN)
             printer.println("> ${body.filePath}", GREEN)

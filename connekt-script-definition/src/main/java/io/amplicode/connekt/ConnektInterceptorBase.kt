@@ -88,16 +88,18 @@ abstract class ConnektInterceptorBase(
      * is set. When [requestStorageDir] is `null` the body is always returned inline regardless of size.
      * Returns `ContentOrFile(null, null)` when there is no body.
      */
-    protected fun handleRequestBody(request: Request): ContentOrFile {
+    protected fun prepareRequestBody(request: Request): ContentOrFile {
         val body = request.body ?: return ContentOrFile(null, null)
         val sink = Buffer()
         body.writeTo(sink)
+
         val contentType = body.contentType()
         val bytes = sink.readByteArray()
         if (bytes.size >= BODY_THRESHOLD) {
             val filePath = storeRequestToFile(bytes, contentType)
             if (filePath != null) return ContentOrFile(null, filePath)
         }
+
         val charset = contentType?.charset() ?: StandardCharsets.UTF_8
         return ContentOrFile(String(bytes, charset), null)
     }
