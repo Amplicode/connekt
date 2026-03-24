@@ -6,7 +6,6 @@ import io.amplicode.connekt.utils.okhttp.hasSubTypeOf
 import okhttp3.*
 import okhttp3.Request
 import okio.Buffer
-import java.io.ByteArrayOutputStream
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
@@ -46,24 +45,13 @@ class RawOutputConnektInterceptor(
     }
 
     private fun logRequestBody(request: Request) {
-        val body = request.body ?: return
-        val sink = Buffer()
-        body.writeTo(sink)
-
-        ByteArrayOutputStream().use { stream ->
-            sink.copyTo(stream)
-            val bytes = stream.toByteArray()
-            if (bytes.size >= BODY_THRESHOLD) {
-                val savedPath = storeRequestToFile(bytes)
-                if (savedPath != null) {
-                    printer.println("Request body saved.", GREEN)
-                    printer.println("> $savedPath", GREEN)
-                } else {
-                    printer.print(String(bytes), GREEN)
-                }
-            } else {
-                printer.print(String(bytes), GREEN)
-            }
+        val body = handleRequestBody(request)
+        if (body.content == null && body.filePath == null) return
+        if (body.filePath != null) {
+            printer.println("Request body saved.", GREEN)
+            printer.println("> ${body.filePath}", GREEN)
+        } else {
+            printer.print(body.content!!, GREEN)
         }
         printer.println()
         printer.println()

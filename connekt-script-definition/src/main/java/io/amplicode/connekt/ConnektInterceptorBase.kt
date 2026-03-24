@@ -6,6 +6,7 @@ import io.amplicode.connekt.utils.okhttp.contentDisposition
 import io.amplicode.connekt.utils.okhttp.fileExtension
 import io.amplicode.connekt.utils.uniqueFilePath
 import okhttp3.*
+import okhttp3.Request
 import okio.Buffer
 import okio.GzipSource
 import java.net.URLDecoder
@@ -18,7 +19,7 @@ import kotlin.io.path.exists
 import kotlin.io.path.outputStream
 
 /**
- * Common base for [RawOutputConnektInterceptor] and [JsonOutputInterceptor].
+ * Common base for [RawOutputConnektInterceptor] and [JsonOutputConnektInterceptor].
  *
  * Provides shared utilities for reading the response body (with gzip support),
  * persisting responses to the file system, and deriving file names.
@@ -81,14 +82,36 @@ abstract class ConnektInterceptorBase(
     }
 
     /**
+     * Reads the request body and returns it as [ContentOrFile].
+     *
+     * If the body exceeds [BODY_THRESHOLD] it is saved to [requestStorageDir] and [ContentOrFile.filePath]
+     * is set. When [requestStorageDir] is `null` the body is always returned inline regardless of size.
+     * Returns `ContentOrFile(null, null)` when there is no body.
+     */
+    protected fun handleRequestBody(request: Request): ContentOrFile {
+        val body = request.body ?: return ContentOrFile(null, null)
+        val sink = Buffer()
+        body.writeTo(sink)
+        val contentType = body.contentType()
+        val bytes = sink.readByteArray()
+        if (bytes.size >= BODY_THRESHOLD) {
+            val filePath = storeRequestToFile(bytes, contentType)
+            if (filePath != null) return ContentOrFile(null, filePath)
+        }
+        val charset = contentType?.charset() ?: StandardCharsets.UTF_8
+        return ContentOrFile(String(bytes, charset), null)
+    }
+
+    /**
      * Saves request [bytes] to a file inside [requestStorageDir] and returns its absolute path.
      *
      * Returns `null` when [requestStorageDir] is `null`.
      */
-    protected fun storeRequestToFile(bytes: ByteArray): String? {
+    protected fun storeRequestToFile(bytes: ByteArray, contentType: MediaType? = null): String? {
         val dir = requestStorageDir ?: return null
         if (!dir.exists()) dir.createDirectories()
-        val filePath = uniqueFilePath(dir, "${getCurrentTimestamp()}.request.body")
+        val extension = contentType?.fileExtension() ?: "txt"
+        val filePath = uniqueFilePath(dir, "${getCurrentTimestamp()}.request.$extension")
         filePath.outputStream().use { it.write(bytes) }
         return filePath.toFile().absolutePath
     }
@@ -123,6 +146,8 @@ abstract class ConnektInterceptorBase(
         const val BODY_THRESHOLD = 2000
     }
 }
+
+data class ContentOrFile(val content: String?, val filePath: String?)
 
 data class ResponseBodyData(
     val buffer: Buffer,

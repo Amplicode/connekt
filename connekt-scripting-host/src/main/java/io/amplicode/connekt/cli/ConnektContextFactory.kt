@@ -1,6 +1,6 @@
 package io.amplicode.connekt.cli
 
-import io.amplicode.connekt.JsonOutputInterceptor
+import io.amplicode.connekt.JsonOutputConnektInterceptor
 import io.amplicode.connekt.RawOutputConnektInterceptor
 import io.amplicode.connekt.SystemOutPrinter
 import io.amplicode.connekt.context.*
@@ -40,7 +40,7 @@ fun createConnektContext(command: AbstractConnektCommand): ConnektContext {
 
     val printer = SystemOutPrinter
     val interceptor = when (command.outputFormat) {
-        OutputFormat.JSON -> JsonOutputInterceptor(printer, command.responseDir, command.requestDir)
+        OutputFormat.JSON -> JsonOutputConnektInterceptor(printer, command.responseDir, command.requestDir)
         OutputFormat.RAW -> RawOutputConnektInterceptor(printer, command.responseDir, command.requestDir)
     }
     val context = createConnektContext(
