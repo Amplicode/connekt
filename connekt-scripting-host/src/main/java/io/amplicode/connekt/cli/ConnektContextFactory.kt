@@ -1,6 +1,7 @@
 package io.amplicode.connekt.cli
 
-import io.amplicode.connekt.ConnektInterceptor
+import io.amplicode.connekt.JsonOutputInterceptor
+import io.amplicode.connekt.RawOutputConnektInterceptor
 import io.amplicode.connekt.SystemOutPrinter
 import io.amplicode.connekt.context.*
 import io.amplicode.connekt.context.execution.CurlExecutionStrategy
@@ -22,7 +23,7 @@ fun createConnektContext(command: AbstractConnektCommand): ConnektContext {
             InMemoryStorage(),
             NoopEnvironmentStore,
             NoopCookiesContext,
-            ClientContextImpl(ConnektInterceptor(printer, null)),
+            ClientContextImpl(RawOutputConnektInterceptor(printer, null)),
             printer
         )
     }
@@ -38,11 +39,15 @@ fun createConnektContext(command: AbstractConnektCommand): ConnektContext {
     }
 
     val printer = SystemOutPrinter
+    val interceptor = when (command.outputFormat) {
+        OutputFormat.JSON -> JsonOutputInterceptor(printer, command.responseDir, command.requestDir)
+        OutputFormat.RAW -> RawOutputConnektInterceptor(printer, command.responseDir, command.requestDir)
+    }
     val context = createConnektContext(
         defaultStorage(storageFile),
         createEnvStore(command),
         CookiesContextImpl(cookiesFile),
-        ClientContextImpl(ConnektInterceptor(printer, command.responseDir)),
+        ClientContextImpl(interceptor),
         printer
     )
 

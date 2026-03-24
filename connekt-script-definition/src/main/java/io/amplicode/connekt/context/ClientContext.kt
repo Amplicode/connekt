@@ -1,6 +1,6 @@
 package io.amplicode.connekt.context
 
-import io.amplicode.connekt.ConnektInterceptor
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import java.io.Closeable
 import java.util.concurrent.TimeUnit
@@ -11,7 +11,7 @@ interface ClientContext : Closeable {
 }
 
 class ClientContextImpl(
-    connektInterceptor: ConnektInterceptor,
+    connektInterceptor: Interceptor,
     override var globalConfigurer: ClientConfigurer = NoopClientConfigurer
 ) : ClientContext {
 

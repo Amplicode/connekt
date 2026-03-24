@@ -23,7 +23,7 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
 
-    implementation("com.squareup.okhttp3:okhttp:4.9.2")
+    api("com.squareup.okhttp3:okhttp:4.9.2")
     implementation("com.jayway.jsonpath:json-path:2.9.0")
     implementation("org.assertj:assertj-core:3.24.2")
 

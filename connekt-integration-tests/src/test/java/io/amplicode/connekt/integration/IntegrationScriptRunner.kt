@@ -2,7 +2,7 @@ package io.amplicode.connekt.integration
 
 import io.amplicode.connekt.BaseNonColorPrinter
 import io.amplicode.connekt.ConnektAuthExtensionsImpl
-import io.amplicode.connekt.ConnektInterceptor
+import io.amplicode.connekt.RawOutputConnektInterceptor
 import io.amplicode.connekt.SystemOutPrinter
 import io.amplicode.connekt.auth.OAuthRunner
 import io.amplicode.connekt.context.*
@@ -78,7 +78,7 @@ fun runScriptFileCurl(
         storage = InMemoryStorage(),
         environmentStore = environmentStore,
         cookiesContext = NoopCookiesContext,
-        clientContext = ClientContextImpl(ConnektInterceptor(capturingPrinter, null)),
+        clientContext = ClientContextImpl(RawOutputConnektInterceptor(capturingPrinter, null)),
         printer = capturingPrinter,
         builderFactory = builderFactory ?: { ctx -> ConnektBuilderFactoryImpl(ctx) },
     )
@@ -144,7 +144,7 @@ fun createIntegrationContext(
         storage = storage,
         environmentStore = environmentStore,
         cookiesContext = NoopCookiesContext,
-        clientContext = ClientContextImpl(ConnektInterceptor(printer, null)),
+        clientContext = ClientContextImpl(RawOutputConnektInterceptor(printer, null)),
         printer = printer,
         builderFactory = builderFactory ?: { ctx -> ConnektBuilderFactoryImpl(ctx) },
     ).apply(configure)

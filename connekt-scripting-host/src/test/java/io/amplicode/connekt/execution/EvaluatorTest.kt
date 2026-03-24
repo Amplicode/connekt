@@ -1,6 +1,6 @@
 package io.amplicode.connekt.execution
 
-import io.amplicode.connekt.ConnektInterceptor
+import io.amplicode.connekt.RawOutputConnektInterceptor
 import io.amplicode.connekt.SystemOutPrinter
 import io.amplicode.connekt.context.*
 import io.amplicode.connekt.context.execution.ExecutionScenario
@@ -139,7 +139,7 @@ class EvaluatorTest {
             persistenceStore,
             NoopEnvironmentStore,
             NoopCookiesContext,
-            ClientContextImpl(ConnektInterceptor(printer, null)),
+            ClientContextImpl(RawOutputConnektInterceptor(printer, null)),
             printer
         )
 

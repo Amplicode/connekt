@@ -1,7 +1,7 @@
 package io.amplicode.connekt.test.utils.components
 
 import io.amplicode.connekt.BaseNonColorPrinter
-import io.amplicode.connekt.ConnektInterceptor
+import io.amplicode.connekt.RawOutputConnektInterceptor
 import io.amplicode.connekt.Printer
 import io.amplicode.connekt.SystemOutPrinter
 import io.amplicode.connekt.context.*
@@ -13,6 +13,7 @@ fun testConnektContext(
     storage: Storage = InMemoryStorage(),
     printer: Printer = TestPrinter(),
     responseStorageDir: Path? = null,
+    requestStorageDir: Path? = null,
     environmentStore: EnvironmentStore = NoopEnvironmentStore,
     cookiesContext: CookiesContext = NoopCookiesContext,
     configure: ConnektContext.() -> Unit = {},
@@ -20,7 +21,7 @@ fun testConnektContext(
     storage,
     environmentStore,
     cookiesContext,
-    ClientContextImpl(ConnektInterceptor(printer, responseStorageDir)),
+    ClientContextImpl(RawOutputConnektInterceptor(printer, responseStorageDir, requestStorageDir)),
     printer,
 ).apply(configure)
 
