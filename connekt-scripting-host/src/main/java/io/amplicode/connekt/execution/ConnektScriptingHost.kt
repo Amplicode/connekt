@@ -86,6 +86,7 @@ class ConnektScriptingHost(
             addAll(
                 "-Xplugin=${findPowerAssertJarInClasspath().absolutePath}",
                 "-P", "plugin:org.jetbrains.kotlin.powerassert:function=kotlin.assert",
+                "-P", "plugin:org.jetbrains.kotlin.powerassert:function=kotlin.check",
                 "-P", "plugin:org.jetbrains.kotlin.powerassert:function=kotlin.require",
                 "-P", "plugin:org.jetbrains.kotlin.powerassert:function=io.amplicode.connekt.dsl.AssertScope.assert",
             )
