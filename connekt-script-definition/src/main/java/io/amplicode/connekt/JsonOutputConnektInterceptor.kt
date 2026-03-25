@@ -80,7 +80,8 @@ class JsonOutputConnektInterceptor(
 
         val inlineBody: String? = if (data.shouldShowInline) {
             val charset: Charset = data.contentType?.charset() ?: StandardCharsets.UTF_8
-            data.buffer.clone().readString(charset)
+            val body = data.buffer.clone().readString(charset)
+            if (body.length < BODY_THRESHOLD) body else null
         } else {
             null
         }
