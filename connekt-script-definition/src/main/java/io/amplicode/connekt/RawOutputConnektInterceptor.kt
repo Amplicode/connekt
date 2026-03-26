@@ -76,29 +76,25 @@ class RawOutputConnektInterceptor(
 
     private fun handleResponseBody(response: Response) {
         printer.println("")
-        val data = readResponseBuffer(response) ?: return
 
-        if (data.shouldShowInline) {
-            logResponseBody(data.contentType, data.buffer.clone())
+        val bodyInfo = prepareResponseBody(response)
+
+        if (bodyInfo.isEmpty()) {
+            return
         }
 
-        val savedPath = storeResponseToFile(
-            response.request.url,
-            data.contentDisposition,
-            data.contentType,
-            data.buffer.clone()
-        )
-        if (savedPath != null) {
+        if (bodyInfo.content != null) {
+            logResponseBody(bodyInfo.contentType, bodyInfo.content)
+        }
+
+        if (bodyInfo.filePath != null) {
             printer.println("")
             printer.println("Response file saved.", GREEN)
-            printer.println("> $savedPath", GREEN)
+            printer.println("> ${bodyInfo.filePath}", GREEN)
         }
     }
 
-    private fun logResponseBody(contentType: MediaType?, responseBuffer: Buffer) {
-        val charset: Charset = contentType?.charset() ?: StandardCharsets.UTF_8
-        val responseText = responseBuffer.readString(charset)
-
+    private fun logResponseBody(contentType: MediaType?, responseText: String) {
         val logText = when {
             contentType?.hasSubTypeOf("json") == true -> try {
                 val objectMapper = jacksonObjectMapper()

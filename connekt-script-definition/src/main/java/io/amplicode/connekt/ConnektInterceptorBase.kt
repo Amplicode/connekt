@@ -10,6 +10,7 @@ import okhttp3.Request
 import okio.Buffer
 import okio.GzipSource
 import java.net.URLDecoder
+import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.time.LocalDateTime
@@ -81,15 +82,8 @@ abstract class ConnektInterceptorBase(
         return filePath.toFile().absolutePath
     }
 
-    /**
-     * Reads the request body and returns it as [ContentOrFile].
-     *
-     * If the body exceeds [BODY_THRESHOLD] it is saved to [requestStorageDir] and [ContentOrFile.filePath]
-     * is set. When [requestStorageDir] is `null` the body is always returned inline regardless of size.
-     * Returns `ContentOrFile(null, null)` when there is no body.
-     */
     protected fun prepareRequestBody(request: Request): ContentOrFile {
-        val body = request.body ?: return ContentOrFile(null, null)
+        val body = request.body ?: return ContentOrFile(null, null, null)
         val sink = Buffer()
         body.writeTo(sink)
 
@@ -97,26 +91,50 @@ abstract class ConnektInterceptorBase(
         val bytes = sink.readByteArray()
         if (bytes.size >= BODY_THRESHOLD) {
             val filePath = storeRequestToFile(bytes, contentType)
-            if (filePath != null) return ContentOrFile(null, filePath)
+            if (filePath != null) return ContentOrFile(null, filePath, contentType)
         }
 
         val charset = contentType?.charset() ?: StandardCharsets.UTF_8
-        return ContentOrFile(String(bytes, charset), null)
+        return ContentOrFile(String(bytes, charset), null, contentType)
     }
 
-    /**
-     * Saves request [bytes] to a file inside [requestStorageDir] and returns its absolute path.
-     *
-     * Returns `null` when [requestStorageDir] is `null`.
-     */
     protected fun storeRequestToFile(bytes: ByteArray, contentType: MediaType? = null): String? {
         val dir = requestStorageDir ?: return null
         if (!dir.exists()) dir.createDirectories()
-        val extension = contentType?.fileExtension() ?: "txt"
-        val filePath = uniqueFilePath(dir, "${getCurrentTimestamp()}.request.$extension")
+        val filename = calcRequestFilename(contentType)
+        val filePath = uniqueFilePath(dir, filename)
         filePath.outputStream().use { it.write(bytes) }
         return filePath.toFile().absolutePath
     }
+
+    protected fun calcRequestFilename(
+        contentType: MediaType?
+    ): String {
+        val extension = contentType?.fileExtension() ?: "txt"
+        return "${getCurrentTimestamp()}.request.$extension"
+    }
+
+    protected fun prepareResponseBody(response: Response): ContentOrFile {
+        val data = readResponseBuffer(response) ?: return ContentOrFile(null, null, null)
+
+        val inlineBody: String? = if (data.shouldShowInline) {
+            val charset: Charset = data.contentType?.charset() ?: StandardCharsets.UTF_8
+            val body = data.buffer.clone().readString(charset)
+            if (body.length < BODY_THRESHOLD) body else null
+        } else {
+            null
+        }
+
+        val savedTo = storeResponseToFile(
+            response.request.url,
+            data.contentDisposition,
+            data.contentType,
+            data.buffer.clone()
+        )
+
+        return ContentOrFile(inlineBody, savedTo, data.contentType)
+    }
+
 
     protected fun calcResponseFilename(
         requestUrl: HttpUrl,
@@ -149,7 +167,13 @@ abstract class ConnektInterceptorBase(
     }
 }
 
-data class ContentOrFile(val content: String?, val filePath: String?)
+data class ContentOrFile(
+    val content: String?,
+    val filePath: String?,
+    val contentType: MediaType?
+) {
+    fun isEmpty() : Boolean = content == null && filePath == null
+}
 
 data class ResponseBodyData(
     val buffer: Buffer,
