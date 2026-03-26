@@ -6,6 +6,7 @@ import okhttp3.Request
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
+import java.util.UUID
 
 class JsonOutputConnektInterceptor(
     printer: Printer,
@@ -14,53 +15,52 @@ class JsonOutputConnektInterceptor(
 ) : ConnektInterceptorBase(printer, responseStorageDir, requestStorageDir) {
 
     private val objectMapper = jacksonObjectMapper()
-    private var requestCount = 0
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
-        val number = ++requestCount
+        val id = UUID.randomUUID().toString()
 
-        emitRequestEvent(request, number)
+        emitRequestEvent(request, id)
 
         val response = try {
             chain.proceed(request)
         } catch (e: Exception) {
             printer.println(objectMapper.writeValueAsString(
-                mapOf("event" to "error", "number" to number, "message" to "Connection refused")
+                mapOf("event" to "error", "id" to id, "message" to "Connection refused")
             ))
             throw e
         }
 
-        emitResponseEvent(response, number)
+        emitResponseEvent(response, id)
         return response
     }
 
-    private fun emitRequestEvent(request: Request, number: Int) {
+    private fun emitRequestEvent(request: Request, id: String) {
         val headers = request.headers.map { listOf(it.first, it.second) }
 
         val bodyInfo = prepareRequestBody(request)
 
         val event = mutableMapOf(
             "event" to "request",
-            "number" to number,
+            "id" to id,
             "method" to request.method,
             "url" to request.url.toString(),
             "headers" to headers,
             "body" to bodyInfo.content,
-            "bodyFile" to bodyInfo.filePath
+            "savedTo" to bodyInfo.filePath
         )
 
         printer.println(objectMapper.writeValueAsString(event))
     }
 
-    private fun emitResponseEvent(response: Response, number: Int) {
+    private fun emitResponseEvent(response: Response, id: String) {
         val headers = response.headers.map { listOf(it.first, it.second) }
 
         val bodyAndSavedTo = handleResponseBody(response)
 
         val event = mutableMapOf(
             "event" to "response",
-            "number" to number,
+            "id" to id,
             "status" to response.code,
             "statusText" to response.message,
             "protocol" to response.formatProtocol(),
