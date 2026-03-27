@@ -6,6 +6,7 @@ import io.amplicode.connekt.utils.okhttp.contentDisposition
 import io.amplicode.connekt.utils.okhttp.fileExtension
 import io.amplicode.connekt.utils.uniqueFilePath
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Request
 import okio.Buffer
 import okio.GzipSource
@@ -88,12 +89,12 @@ abstract class ConnektInterceptorBase(
         body.writeTo(sink)
 
         val contentType = body.contentType()
+            ?: request.header("Content-Type")?.toMediaTypeOrNull()
         val bytes = sink.readByteArray()
         if (bytes.size >= BODY_THRESHOLD) {
             val filePath = storeRequestToFile(bytes, contentType)
             if (filePath != null) return ContentOrFile(null, filePath, contentType)
         }
-
         val charset = contentType?.charset() ?: StandardCharsets.UTF_8
         return ContentOrFile(String(bytes, charset), null, contentType)
     }
