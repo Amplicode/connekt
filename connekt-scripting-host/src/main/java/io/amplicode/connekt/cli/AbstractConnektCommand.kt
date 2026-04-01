@@ -43,6 +43,10 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
         .path(mustExist = false, canBeDir = true, canBeFile = false, mustBeReadable = true)
         .default(connektHome.resolve("response"))
 
+    val requestDir by option(help = "Requests directory")
+        .path(mustExist = false, canBeDir = true, canBeFile = false, mustBeReadable = true)
+        .default(connektHome.resolve("request"))
+
     open val envName by option(help = "Environment name")
 
     open val envParams by option("--env-param")
@@ -96,7 +100,14 @@ abstract class AbstractConnektCommand : CliktCommand("Connekt") {
         names = arrayOf("--kotlin-power-assert"),
         help = "Enable Kotlin Power Assert"
     ).flag(default = false)
+
+    val outputFormat by option(
+        names = arrayOf("--output"),
+        help = "Output format: RAW or JSON"
+    ).enum<OutputFormat>().default(OutputFormat.RAW)
 }
+
+enum class OutputFormat { RAW, JSON }
 
 val AbstractConnektCommand.executionScenario: ExecutionScenario
     get() {

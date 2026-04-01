@@ -104,8 +104,6 @@ class OAuthRunner(
             .getReadContext(response)
             .decode<RefreshTokenResponse>("$")
 
-        println(refreshTokenResponse)
-
         val newAuth = Auth(
             refreshTokenResponse.access_token,
             auth.refreshToken,
