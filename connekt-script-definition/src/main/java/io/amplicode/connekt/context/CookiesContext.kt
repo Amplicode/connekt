@@ -45,7 +45,7 @@ private class PersistentCookieJar(private val filePath: Path) : CookieJar, Close
             .map { it.toCookie() }
             .groupBy { it.domain }
             .forEach { (domain, cookies) ->
-                cookiesMap[domain] = cookies.toSet()
+                cookiesMap[domain] = cookies.associateBy { it.name }.values.toSet()
             }
     }
 
@@ -60,7 +60,9 @@ private class PersistentCookieJar(private val filePath: Path) : CookieJar, Close
 
     override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
         cookiesMap.compute(url.host) { _, hostCookies ->
-            (hostCookies ?: setOf()) + cookies
+            val existing = (hostCookies ?: emptySet()).associateBy { it.name }.toMutableMap()
+            cookies.forEach { existing[it.name] = it }
+            existing.values.toSet()
         }
     }
 
