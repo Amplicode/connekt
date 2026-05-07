@@ -14,6 +14,7 @@ import kotlin.script.experimental.dependencies.*
 import kotlin.script.experimental.dependencies.maven.MavenDependenciesResolver
 import kotlin.script.experimental.host.FileScriptSource
 import kotlin.script.experimental.jvm.JvmDependency
+import kotlin.script.experimental.jvm.dependenciesFromClassloader
 import kotlin.script.experimental.jvm.dependenciesFromCurrentContext
 import kotlin.script.experimental.jvm.jvm
 
@@ -35,7 +36,14 @@ object ConnektConfiguration : ScriptCompilationConfiguration({
     )
 
     jvm {
-        dependenciesFromCurrentContext(wholeClasspath = true)
+        if (Thread.currentThread().contextClassLoader != null) {
+            dependenciesFromCurrentContext(wholeClasspath = true)
+        } else {
+            dependenciesFromClassloader(
+                classLoader = ConnektConfiguration::class.java.classLoader,
+                wholeClasspath = true
+            )
+        }
     }
 
     ide {
