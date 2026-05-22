@@ -4,6 +4,8 @@ import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import java.io.Closeable
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration
+import kotlin.time.toJavaDuration
 
 interface ClientContext : Closeable {
     fun getClient(configure: ClientConfigurer): OkHttpClient
@@ -45,3 +47,15 @@ class ClientContextImpl(
 typealias ClientConfigurer = OkHttpClient.Builder.() -> Unit
 
 val NoopClientConfigurer: ClientConfigurer = { }
+
+internal data class TimeoutSettings(
+    val connect: Duration? = null,
+    val read: Duration? = null,
+    val write: Duration? = null,
+)
+
+internal fun TimeoutSettings.toClientConfigurer(): ClientConfigurer = {
+    connect?.let { connectTimeout(it.toJavaDuration()) }
+    read?.let { readTimeout(it.toJavaDuration()) }
+    write?.let { writeTimeout(it.toJavaDuration()) }
+}

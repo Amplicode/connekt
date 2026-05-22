@@ -3,6 +3,9 @@ package io.amplicode.connekt
 import io.amplicode.connekt.context.ClientConfigurer
 import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.context.StoredVariableDelegate
+import io.amplicode.connekt.context.TimeoutSettings
+import io.amplicode.connekt.context.toClientConfigurer
+import kotlin.time.Duration
 import io.amplicode.connekt.context.execution.DeclarationCoordinates
 import io.amplicode.connekt.context.execution.Executable
 import io.amplicode.connekt.dsl.*
@@ -17,8 +20,42 @@ internal class ConnektBuilderImpl(private val context: ConnektContext) :
     override val vars = context.variablesStore
     override fun variable(): StoredVariableDelegate = vars.variable()
 
+    private var timeoutSettings = TimeoutSettings()
+    private var userConfigurer: ClientConfigurer? = null
+
+    private fun rebuildGlobalConfigurer() {
+        val timeoutConfigurer = timeoutSettings.toClientConfigurer()
+        val user = userConfigurer
+        context.clientContext.globalConfigurer = if (user != null) {
+            { timeoutConfigurer(); user() }
+        } else {
+            timeoutConfigurer
+        }
+    }
+
     override fun configureClient(configure: ClientConfigurer) {
-        context.clientContext.globalConfigurer = configure
+        userConfigurer = configure
+        rebuildGlobalConfigurer()
+    }
+
+    override fun timeout(duration: Duration) {
+        timeoutSettings = timeoutSettings.copy(connect = duration, read = duration, write = duration)
+        rebuildGlobalConfigurer()
+    }
+
+    override fun connectTimeout(duration: Duration) {
+        timeoutSettings = timeoutSettings.copy(connect = duration)
+        rebuildGlobalConfigurer()
+    }
+
+    override fun readTimeout(duration: Duration) {
+        timeoutSettings = timeoutSettings.copy(read = duration)
+        rebuildGlobalConfigurer()
+    }
+
+    override fun writeTimeout(duration: Duration) {
+        timeoutSettings = timeoutSettings.copy(write = duration)
+        rebuildGlobalConfigurer()
     }
 
     override fun <T> useCase(name: String?, runUseCase: UseCaseBuilder.() -> T): UseCaseExecutable<T> {

@@ -12,7 +12,10 @@ import io.amplicode.connekt.HeaderName
 import io.amplicode.connekt.HeaderValue
 import io.amplicode.connekt.MissingPathParameterException
 import io.amplicode.connekt.context.ClientConfigurer
+import io.amplicode.connekt.context.TimeoutSettings
+import io.amplicode.connekt.context.toClientConfigurer
 import okhttp3.*
+import kotlin.time.Duration
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.internal.http.HttpMethod
@@ -74,6 +77,36 @@ class RequestBuilder(
 
     private val requestBuilderTweaks: MutableList<RequestBuilderConfigurer> = mutableListOf()
     private val clientBuilderTweaks: MutableList<ClientConfigurer> = mutableListOf()
+
+    private var timeoutSettings = TimeoutSettings()
+
+    /**
+     * Sets connect, read, and write timeouts to [duration] for this request.
+     */
+    fun timeout(duration: Duration) {
+        timeoutSettings = timeoutSettings.copy(connect = duration, read = duration, write = duration)
+    }
+
+    /**
+     * Sets the connect timeout for this request.
+     */
+    fun connectTimeout(duration: Duration) {
+        timeoutSettings = timeoutSettings.copy(connect = duration)
+    }
+
+    /**
+     * Sets the read timeout for this request.
+     */
+    fun readTimeout(duration: Duration) {
+        timeoutSettings = timeoutSettings.copy(read = duration)
+    }
+
+    /**
+     * Sets the write timeout for this request.
+     */
+    fun writeTimeout(duration: Duration) {
+        timeoutSettings = timeoutSettings.copy(write = duration)
+    }
 
     private var body: RequestBody? = null
         set(value) {
@@ -491,6 +524,8 @@ class RequestBuilder(
         clientBuilderTweaks.forEach { configure ->
             configure()
         }
+
+        timeoutSettings.toClientConfigurer().invoke(this)
     }
 }
 
