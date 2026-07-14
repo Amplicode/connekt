@@ -6,8 +6,10 @@
 package io.amplicode.connekt.context
 
 import io.amplicode.connekt.context.persistence.Storage
+import java.time.Instant
 import kotlin.reflect.KProperty
 import kotlin.reflect.KType
+import kotlin.reflect.typeOf
 
 class VariablesStore(val values: Storage) {
     fun string() = DelegateProvider<String>(values)
@@ -18,6 +20,25 @@ class VariablesStore(val values: Storage) {
 
     fun <T> setValue(name: String, value: T?) = values.setValue(name, value)
     fun <T> getValue(name: String, type: KType): T? = values.getValue(name, type)
+
+    /**
+     * Persists the expiration timestamp for the variable [name]. A `null` [expiresAt] clears any
+     * previously stored expiration, making the value cache indefinitely.
+     */
+    fun setExpiration(name: String, expiresAt: Instant?) {
+        values.setValue(expirationKey(name), expiresAt?.toEpochMilli())
+    }
+
+    /**
+     * Returns `true` if the value stored under [name] has an expiration timestamp that already
+     * passed. Values with no stored expiration never expire.
+     */
+    fun isExpired(name: String): Boolean {
+        val expiresAtMillis: Long = values.getValue(expirationKey(name), typeOf<Long>()) ?: return false
+        return System.currentTimeMillis() >= expiresAtMillis
+    }
+
+    private fun expirationKey(name: String) = "$name#expiresAt"
 }
 
 class DelegateProvider<T>(private val values: Storage) {

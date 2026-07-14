@@ -76,6 +76,38 @@ val userId: String by POST("https://api.example.com/users") {
 GET("https://api.example.com/users/$userId")
 ```
 
+### Value Caching with TTL
+
+A delegated value is cached indefinitely and refreshed only by re-running its request. A `ttl` makes
+it expire: once elapsed, the next run re-fetches instead of returning the stale value.
+
+```kotlin
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+
+// fixed duration
+val token: String by POST("$baseUrl/auth/token") {
+    ttl(5.minutes)
+} then { decode<String>("$.access_token") }
+
+// computed from the response (body via decode, headers via header)
+val token: String by POST("$baseUrl/auth/token") {
+    ttl { decode<Long>("$.expires_in").seconds }
+} then { decode<String>("$.access_token") }
+```
+
+A `useCase` supports a fixed duration only:
+
+```kotlin
+val token: String by useCase("auth") {
+    ttl(5.minutes)
+    val response by POST("$baseUrl/auth/token")
+    response.decode<String>("$.access_token")
+}
+```
+
+TTL does not refresh on `401` — for that use the [OAuth flow](#oauth2-authorization-code-flow-experimental).
+
 ### Form Data
 
 ```kotlin

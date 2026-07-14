@@ -34,6 +34,9 @@ class CompilationTest {
     fun `delegated_vars compiles`() = compile("delegated_vars/delegated_vars.connekt.kts")
 
     @Test
+    fun `ttl_dsl compiles`() = compile("ttl/ttl_dsl.connekt.kts")
+
+    @Test
     fun `import_helper compiles`() {
         val tempDir = kotlin.io.path.createTempDirectory("connekt-compile-test").toFile()
         try {

@@ -12,10 +12,13 @@ import io.amplicode.connekt.HeaderName
 import io.amplicode.connekt.HeaderValue
 import io.amplicode.connekt.MissingPathParameterException
 import io.amplicode.connekt.context.ClientConfigurer
+import com.jayway.jsonpath.ReadContext
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.internal.http.HttpMethod
+import org.intellij.lang.annotations.Language
+import kotlin.time.Duration
 
 @DslMarker
 annotation class ConnektDsl
@@ -71,6 +74,13 @@ class RequestBuilder(
     private var noCookies = false
     private var noRedirect = false
     private var http2 = false
+    internal var ttlSpec: TtlSpec? = null
+        private set(value) {
+            require(field == null) {
+                "TTL already set. Use ttl() only once per request"
+            }
+            field = value
+        }
 
     private val requestBuilderTweaks: MutableList<RequestBuilderConfigurer> = mutableListOf()
     private val clientBuilderTweaks: MutableList<ClientConfigurer> = mutableListOf()
@@ -183,6 +193,56 @@ class RequestBuilder(
     fun http2() {
         http2 = true
     }
+
+    /**
+     * Sets a fixed time-to-live for the value cached in `vars` when this request is delegated to a
+     * variable (via `by`).
+     *
+     * After the TTL elapses, the next access to the delegated variable re-executes the request and
+     * refreshes the stored value instead of returning the stale cached one. Without a TTL the cached
+     * value never expires and is only refreshed by an explicit re-run.
+     *
+     * @param duration How long the cached value stays valid, measured from the moment the response
+     *   is received.
+     */
+    fun ttl(duration: Duration) {
+        ttlSpec = TtlSpec { duration }
+    }
+
+    /**
+     * Computes the TTL of the cached value from the response, for servers that report the lifetime
+     * themselves. The [fromResponse] block runs with the [Response] as its receiver right after the
+     * request completes and can read both the body (via [decode]) and headers (via
+     * [Response.header]): e.g. `ttl { decode<Long>("$.expires_in").seconds }` or
+     * `ttl { header("X-Token-Expires-In")!!.toLong().seconds }`.
+     *
+     * @param fromResponse Computes the TTL from the response.
+     */
+    fun ttl(fromResponse: Response.() -> Duration) {
+        ttlSpec = TtlSpec { response -> response.fromResponse() }
+    }
+
+    /**
+     * Parses the response body as JSON and returns a [ReadContext] for JSONPath queries.
+     *
+     * Mirrors the script-level `jsonPath()` helper so it can be used inside request-configuration
+     * blocks (e.g. from [ttl]), where the DSL scope hides the top-level receiver.
+     */
+    fun Response.jsonPath(): ReadContext {
+        val ctx = requireNotNull(context) {
+            "Request context is unavailable to parse the response body"
+        }
+        return ctx.jsonContext.getReadContext(this)
+    }
+
+    /**
+     * Deserializes the JSON response body at [path] into type [T].
+     *
+     * Mirrors the script-level `decode()` helper so it can be used inside request-configuration
+     * blocks (e.g. from [ttl]), where the DSL scope hides the top-level receiver.
+     */
+    inline fun <reified T> Response.decode(@Language("JSONPath") path: String = "$"): T =
+        jsonPath().decode(path)
 
     /**
      * Adds multiple request headers at once.
@@ -495,3 +555,10 @@ class RequestBuilder(
 }
 
 typealias RequestBuilderConfigurer = Request.Builder.() -> Unit
+
+/**
+ * Computes the time-to-live of a cached variable value from the executed request's [Response].
+ */
+fun interface TtlSpec {
+    fun computeTtl(response: Response): Duration
+}

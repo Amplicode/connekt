@@ -32,6 +32,7 @@ fun Application.configureIntegrationRouting() {
         }
         jsonApi()
         counterApi()
+        tokenApi()
         echoApi()
         cookiesApi()
         oauthApi()
@@ -126,6 +127,20 @@ private fun Routing.counterApi() {
         post("/reset") {
             getCounter().set(0)
         }
+    }
+}
+
+private fun Routing.tokenApi() {
+    val counter = AtomicInteger()
+    post("/token") {
+        val expiresIn = call.request.queryParameters["expires_in"]?.toLong() ?: 3600L
+        val token = "tok-${counter.incrementAndGet()}"
+        call.response.headers.append("X-Token-Expires-In", expiresIn.toString())
+        call.respondText(
+            //language=json
+            """{"access_token": "$token", "expires_in": $expiresIn}""",
+            contentType = ContentType.Application.Json
+        )
     }
 }
 

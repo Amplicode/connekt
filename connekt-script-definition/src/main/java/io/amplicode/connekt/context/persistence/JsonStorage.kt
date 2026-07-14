@@ -30,6 +30,7 @@ class JsonStorage(
 
     override fun <T : Any> getValue(key: String, type: KType): T? {
         val jsonNode = data[key] ?: return null
+        if (jsonNode.isNull) return null
         val javaType = objectMapper.constructType(type.javaType)
         return try {
             objectMapper.convertValue(jsonNode, javaType) as? T

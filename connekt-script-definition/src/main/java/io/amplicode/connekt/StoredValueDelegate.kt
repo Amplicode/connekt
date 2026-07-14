@@ -12,16 +12,24 @@ import kotlin.reflect.KProperty
  * logging capabilities, client information, and other utilities.
  * @param executableWithResult Executes the logic to generate a value when it is not already stored.
  * @param storedValueProvider Holds a potentially precomputed value of type T or null if not initialized.
+ * @param expired Reports whether a stored value existed but was dropped because its TTL elapsed,
+ * used only to make the re-execution reason visible in the output.
  */
 class StoredValueDelegate<T>(
     private val connektContext: ConnektContext,
     private val executableWithResult: ExecutableWithResult<T>,
     private val storedValueProvider: () -> T?,
+    private val expired: () -> Boolean = { false },
 ) : ValueDelegateBase<T>() {
 
     override fun getValueImpl(thisRef: Any?, property: KProperty<*>): T {
         storedValueProvider()?.let { return it }
-        connektContext.printer.println("Initializing value for property `${property.name}`")
+        val message = if (expired()) {
+            "Cached value for property `${property.name}` has expired, re-executing request"
+        } else {
+            "Initializing value for property `${property.name}`"
+        }
+        connektContext.printer.println(message)
         return executableWithResult.execute()
     }
 }
