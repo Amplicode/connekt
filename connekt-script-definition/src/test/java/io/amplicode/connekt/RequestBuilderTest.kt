@@ -5,8 +5,20 @@ import okhttp3.Request
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 class RequestBuilderTest {
+
+    @Test
+    fun `ttl can be set only once per request`() {
+        assertThrows<IllegalArgumentException> {
+            RequestBuilder("GET", "http://localhost/api", null).apply {
+                ttl(5.minutes)
+                ttl { 1.seconds }
+            }
+        }
+    }
 
     @Test
     fun `test valid url with placeholders`() {

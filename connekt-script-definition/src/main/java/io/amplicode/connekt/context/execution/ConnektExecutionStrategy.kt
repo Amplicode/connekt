@@ -37,12 +37,21 @@ interface ConnektExecutionStrategy : RequestExecutionStrategy, UseCaseExecutionS
         requestExecutable: ExecutableWithResult<Response>,
         mapFunction: io.amplicode.connekt.MapFunction<Response, R>
     ): io.amplicode.connekt.MappedRequestHolder<R>
+
+    /**
+     * Whether this strategy performs a real request whose response can be inspected. `false` for
+     * preview strategies (e.g. curl generation) that return a synthetic response, so TTL derived
+     * from the response must not be computed against it.
+     */
+    val performsRealRequest: Boolean
 }
 
 /**
  * Makes a real HTTP request according to params described in providing [RequestBuilder] and context
  */
 class DefaultExecutionStrategy : ConnektExecutionStrategy {
+
+    override val performsRealRequest = true
 
     override fun executeRequest(context: ConnektContext, requestBuilder: RequestBuilder): Response {
         val request = requestBuilder.build()
@@ -72,6 +81,8 @@ class DefaultExecutionStrategy : ConnektExecutionStrategy {
  * Does not make a real HTTP request but builds a `curl` command instead
  */
 class CurlExecutionStrategy : ConnektExecutionStrategy {
+
+    override val performsRealRequest = false
 
     override fun executeRequest(context: ConnektContext, requestBuilder: RequestBuilder): Response {
         val interceptor = simpleCurlInterceptor { command ->

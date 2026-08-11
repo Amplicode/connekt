@@ -2,6 +2,7 @@ package io.amplicode.connekt.integration
 
 import io.amplicode.connekt.BaseNonColorPrinter
 import io.amplicode.connekt.ConnektAuthExtensionsImpl
+import io.amplicode.connekt.Printer
 import io.amplicode.connekt.RawOutputConnektInterceptor
 import io.amplicode.connekt.SystemOutPrinter
 import io.amplicode.connekt.auth.OAuthRunner
@@ -137,9 +138,9 @@ fun createIntegrationContext(
     environmentStore: EnvironmentStore = NoopEnvironmentStore,
     storage: Storage = InMemoryStorage(),
     builderFactory: ((ConnektContext) -> ConnektBuilderFactory)? = null,
+    printer: Printer = SystemOutPrinter,
     configure: ConnektContext.() -> Unit = {}
 ): ConnektContext {
-    val printer = SystemOutPrinter
     return createConnektContext(
         storage = storage,
         environmentStore = environmentStore,

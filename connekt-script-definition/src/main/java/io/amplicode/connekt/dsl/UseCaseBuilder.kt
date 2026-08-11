@@ -2,6 +2,7 @@ package io.amplicode.connekt.dsl
 
 import okhttp3.Response
 import kotlin.reflect.KProperty
+import kotlin.time.Duration
 
 /**
  * DSL context receiver for a `useCase {}` block.
@@ -21,6 +22,27 @@ import kotlin.reflect.KProperty
  */
 @ConnektDsl
 abstract class UseCaseBuilder : RequestRegistrator<Response>, JsonPathExtensionsProvider {
+
+    internal var ttlDuration: Duration? = null
+        private set(value) {
+            require(field == null) { "TTL already set. Use ttl() only once per useCase" }
+            field = value
+        }
+
+    /**
+     * Sets a fixed time-to-live for the value this useCase produces when it is delegated to a
+     * variable (via `by`). After the TTL elapses, the next access to the variable re-runs the
+     * useCase and refreshes the stored value.
+     *
+     * Only a fixed [duration] is supported for a useCase: unlike a single request, a useCase returns
+     * its value imperatively, so a response-derived TTL has no single response to compute from.
+     *
+     * @param duration How long the produced value stays valid, measured from the moment the useCase
+     *   finishes.
+     */
+    fun ttl(duration: Duration) {
+        ttlDuration = duration
+    }
 
     /**
      * Enables property delegation for HTTP responses using the `by` keyword.

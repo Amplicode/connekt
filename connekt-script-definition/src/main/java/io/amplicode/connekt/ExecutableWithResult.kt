@@ -4,6 +4,8 @@ import io.amplicode.connekt.context.ConnektContext
 import io.amplicode.connekt.context.execution.Executable
 import io.amplicode.connekt.dsl.RequestBuilder
 import okhttp3.Response
+import java.time.Instant
+import kotlin.time.toJavaDuration
 
 /**
  * Provides controls to handle response data.
@@ -42,12 +44,23 @@ class RequestHolder(
 
     override val originalExecutable = this
 
+    var expiresAt: Instant? = null
+        private set
+
     private val executionStrategy
         get() = context.executionContext.getExecutionStrategy(this)
 
     override fun doExecute(): Response {
         val requestBuilder = requestBuilderProvider.getRequestBuilder()
-        val response = executionStrategy.executeRequest(context, requestBuilder)
+        val strategy = executionStrategy
+        val response = strategy.executeRequest(context, requestBuilder)
+        expiresAt = if (strategy.performsRealRequest) {
+            requestBuilder.ttlSpec?.let { spec ->
+                Instant.now().plus(spec.computeTtl(response).toJavaDuration())
+            }
+        } else {
+            null
+        }
         return response
     }
 
