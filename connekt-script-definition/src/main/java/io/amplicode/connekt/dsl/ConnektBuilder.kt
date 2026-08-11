@@ -13,6 +13,7 @@ import io.amplicode.connekt.context.EnvironmentStore
 import io.amplicode.connekt.context.StoredVariableDelegate
 import io.amplicode.connekt.context.VariablesStore
 import kotlin.reflect.KProperty
+import kotlin.time.Duration
 
 /**
  * Root DSL receiver available in every Connekt script.
@@ -116,6 +117,21 @@ interface ConnektBuilder :
      * @see okhttp3.OkHttpClient.Builder
      */
     fun configureClient(configure: ClientConfigurer)
+
+    /**
+     * Sets connect, read, and write timeouts to the same [duration] for all requests in this script.
+     * A zero duration means no timeout (OkHttp semantics).
+     */
+    fun timeout(duration: Duration)
+
+    /** Sets the connect timeout for all requests in this script. */
+    fun connectTimeout(duration: Duration)
+
+    /** Sets the read timeout for all requests in this script. */
+    fun readTimeout(duration: Duration)
+
+    /** Sets the write timeout for all requests in this script. */
+    fun writeTimeout(duration: Duration)
 
     /**
      * Groups multiple HTTP requests into a named unit that can be executed together and delegated
